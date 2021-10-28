@@ -1,0 +1,9 @@
+[submodule "libs/icl"]
+	path = libs/icl
+	url = git@github.com:brasserie/icl.git
+[submodule "libs/imgui"]
+	path = libs/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "libs/tarotclub-core"]
+	path = libs/tarotclub-core
+	url = git@github.com:tarotclub/tarotclub-core.git
