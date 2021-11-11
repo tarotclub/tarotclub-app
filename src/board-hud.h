@@ -14,7 +14,7 @@ public:
     void ToolbarUI(IBoardEvent &event);
     void DrawChatWindow(GfxSystem &system, IBoardEvent &event);
     void PlayerBoxUI(const std::string &boxName, const std::string &nickName, const std::string &text, float x, float y, bool select);
-
+    void DrawResult(IBoardEvent &event);
 private:
     PlayerContext &mCtx;
     IBoardEvent &mEvent;

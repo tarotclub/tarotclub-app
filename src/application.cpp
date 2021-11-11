@@ -192,6 +192,15 @@ void Application::ClickOnBoard()
         mCtx.mMode = PlayerContext::TABLE_MODE_BLOCKED;
         mCtx.Sync(Engine::WAIT_FOR_END_OF_TRICK, mNetReplies);
         mCtx.mCurrentTrick.Clear();
+        mCtx.mEndOfTrickTimer.Stop();
+    }
+    else if (mCtx.mMode == PlayerContext::TABLE_MODE_SHOW_RESULTS)
+    {
+        mCtx.Sync(Engine::WAIT_FOR_READY, mNetReplies);
+    }
+    else
+    {
+        TLogError("ClickOnBoard() out of context!");
     }
 }
 
@@ -323,7 +332,7 @@ void Application::HandleRequest(const Request &req)
         else
         {
             mCtx.mMode = PlayerContext::TABLE_MODE_WAIT_TIMER_END_OF_TRICK;
-            mCtx.mEndOfTrickTimer.Reset();
+            mCtx.mEndOfTrickTimer.Start();
         }
     }
     else if (ev == "EndOfGame")
@@ -333,8 +342,6 @@ void Application::HandleRequest(const Request &req)
         ss << "End of game, winner is: " << mCtx.mCurrentPlayer.ToString();
         mCtx.AddMessage(ss.str());
 
-//            ClearBoard();
-        mCtx.Sync(Engine::WAIT_FOR_READY, mNetReplies);
     }
     else if (ev == "AllPassed")
     {
@@ -357,7 +364,7 @@ void Application::HandleRequest(const Request &req)
     }
     else if (ev == "Error")
     {
-        TLogInfo("[APP] Error event");
+        TLogInfo("[APP] Error event, reason: " + json.GetValue("reason").GetString());
     }
     else
     {

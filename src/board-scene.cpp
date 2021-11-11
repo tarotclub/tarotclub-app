@@ -139,6 +139,10 @@ void BoardScene::Draw(SDL_Renderer *renderer)
             // FIXME: handle au premier tour
 
         }
+        else if (mCtx.mMode == PlayerContext::TABLE_MODE_SHOW_RESULTS)
+        {
+            mHud.DrawResult(mEvent);
+        }
     }
 
     mHud.DrawChatWindow(GetSystem(), mEvent);

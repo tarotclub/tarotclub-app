@@ -145,6 +145,47 @@ void BoardHud::DrawBidChooser(IBoardEvent &event)
 }
 
 
+void BoardHud::DrawResult(IBoardEvent &event)
+{
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    ImGui::SetNextWindowSize(ImVec2(400, 200));
+
+    ImGuiWindowFlags window_flags = 0
+        | ImGuiWindowFlags_NoTitleBar
+        | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoSavedSettings
+        ;
+    ImGui::Begin("ResultWindow", NULL, window_flags);
+    ImGui::Text("Résultats");
+    ImGui::Separator();
+
+    ImGui::Text("(25 + %d + %d) * %d + %d + %d",
+                abs(mCtx.mPoints.Difference()),
+                mCtx.mPoints.GetLittleEndianPoints(),
+                mCtx.mPoints.handlePoints,
+                mCtx.mPoints.GetSlamPoints(mCtx.mBid),
+                Tarot::GetMultiplier(mCtx.mBid.contract));
+
+    // Show the formulat and final scoring
+    ImGui::Text("Points de l'attaque : %d", mCtx.AttackPoints());
+    ImGui::Text("Points de la défense : %d", mCtx.DefensePoints());
+
+    ImGui::Text("Gagnant: %s", ( mCtx.mPoints.Winner() == Team::ATTACK) ? "Attaque" : "Défense");
+
+    ImGui::Separator();
+    if (ImGui::Button("Fermer"))
+    {
+        mEvent.ClickOnBoard();
+    }
+
+    ImGui::End();
+}
+
+
 void BoardHud::ToolbarUI(IBoardEvent &event)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
