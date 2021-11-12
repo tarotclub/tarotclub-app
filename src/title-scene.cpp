@@ -1,36 +1,89 @@
 #include "title-scene.h"
 #include "scenes.h"
 
-class Background : public Image
+class Background : public Entity
 {
 
 public:
     Background(GfxSystem &s)
-        : Image(s, "assets/hud/background.png")
+        : Entity(s)
     {
+
+    }
+
+    virtual void Initialize(SDL_Renderer *renderer) override
+    {
+        Entity::Initialize(renderer);
+
+        mScreenWidth = GetSystem().GetWindowSize().w;
+        mScreenHeight = GetSystem().GetWindowSize().h;
+
+        Uint32 pixelFormat;
+        int mTileWidth = 0;
+        int mTileHeight = 0;
+
+        SDL_Texture *tileTexture = IMG_LoadTexture(renderer, "assets/hud/tile_bg1.png");
+
+
+        // get the width and height of the texture
+        if (SDL_QueryTexture(tileTexture, &pixelFormat, NULL, &mTileWidth, &mTileHeight) == 0)
+        {
+            SetSize(mTileWidth, mTileHeight);
+        }
+
+        mBigTexture = SDL_CreateTexture(renderer, pixelFormat, SDL_TEXTUREACCESS_TARGET, mScreenWidth, mScreenHeight);
+
+        SDL_SetRenderTarget(renderer, mBigTexture);
+        // Your draw loop here
+        SDL_Rect r;
+        r.w = mTileWidth;
+        r.h = mTileHeight;
+        r.x = 0;
+        r.y = 0;
+        // La tile est multiple de la résolution
+        for (int i = 0; i < mScreenWidth / mTileWidth; i++)
+        {
+            r.y = 0;
+            for (int j = 0; j < GetSystem().GetWindowSize().h / mTileHeight; j++)
+            {
+                SDL_RenderCopyEx(renderer, tileTexture, NULL, &r, 0.0, NULL, SDL_FLIP_NONE);
+                r.y += mTileHeight;
+            }
+            r.x += mTileWidth;
+        }
+
+        SDL_SetRenderTarget(renderer, NULL);
+        SDL_DestroyTexture(tileTexture);
 
     }
 
     virtual void Update(double deltaTime) override
     {
-//        SetPos(GetPos().x += 0.1*deltaTime, GetPos().y);
-        move -= 0.05*deltaTime;
+        move -= 0.03 * deltaTime;
 
-        if (move <= GetRect().w * -2) {
+        if (move <= mScreenWidth * -1) {
             move = 0;
         }
     }
 
     virtual void Draw(SDL_Renderer *renderer) override
     {
-        DrawEx(renderer, move, 0);
-        DrawEx(renderer, move + GetRect().w, 0);
-        DrawEx(renderer, move + GetRect().w * 2, 0);
-        DrawEx(renderer, move + GetRect().w * 3, 0);
+        SDL_Rect r;
+
+        r.w = mScreenWidth;
+        r.h = mScreenHeight;
+        r.x = move;
+        r.y = 0;
+        SDL_RenderCopyEx(renderer, mBigTexture, NULL, &r, 0.0, NULL, SDL_FLIP_NONE);
+        r.x += mScreenWidth;
+        SDL_RenderCopyEx(renderer, mBigTexture, NULL, &r, 0.0, NULL, SDL_FLIP_NONE);
     }
 private:
-    double move;
+    double move = 0.0;
+    SDL_Texture* mBigTexture = nullptr;
 
+    int mScreenWidth = 0;
+    int mScreenHeight = 0;
 };
 
 

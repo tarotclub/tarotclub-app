@@ -308,9 +308,7 @@ public:
 private:
     std::string mPath;
     SDL_Texture *mTexture = nullptr;
-    uint8_t r = 200;
-    uint8_t g = 200;
-    uint8_t b = 200;
+
     bool mHighlight = false;
 };
 

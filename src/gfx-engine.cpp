@@ -2,6 +2,8 @@
 #include "gfx-engine.h"
 #include "IconsMaterialDesign.h"
 #include "IconsFontAwesome5.h"
+#include "Util.h"
+#include "Log.h"
 
 void GfxEngine::AddScene(std::shared_ptr<Scene> scene, uint32_t id)
 {
@@ -333,7 +335,20 @@ void Image::Initialize(SDL_Renderer *renderer)
 {
     Entity::Initialize(renderer);
 
+    std::cout << "Loading: " << mPath << std::endl;
+
+    if (!Util::FileExists(mPath))
+    {
+        TLogError("[IMAGE] Can't find file: " + mPath);
+    }
+
     mTexture = IMG_LoadTexture(renderer, mPath.c_str());
+
+    if (mTexture == nullptr)
+    {
+        TLogError("[IMAGE] Problem loading texture: " + mPath);
+    }
+
     int w = 0;
     int h = 0;
     // get the width and height of the texture
