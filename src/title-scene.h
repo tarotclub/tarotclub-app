@@ -7,7 +7,7 @@
 class TitleScene : public Scene
 {
 public:
-    TitleScene(GfxSystem &system);
+    TitleScene(GfxSystem &system, const std::string &version);
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
 
@@ -16,10 +16,12 @@ public:
     virtual void Draw(SDL_Renderer *renderer) override;
 
 private:
+    ImFont* mMenuFont;
+    std::string mVersion;
+
+    void DrawInfoMenu();
     void DrawGui();
 
-private:
-    ImFont* mMenuFont;
 };
 
 

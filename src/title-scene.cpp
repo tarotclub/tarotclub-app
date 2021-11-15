@@ -108,8 +108,9 @@ private:
 };
 
 
-TitleScene::TitleScene(GfxSystem &system)
+TitleScene::TitleScene(GfxSystem &system, const std::string &version)
     : Scene(system)
+    , mVersion(version)
 {
     auto bg = std::make_shared<Background>(GetSystem());
     auto logo = std::make_shared<Logo>(GetSystem());
@@ -132,6 +133,7 @@ void TitleScene::Draw(SDL_Renderer *renderer)
 {
     Scene::Draw(renderer);
     DrawGui();
+    DrawInfoMenu();
 }
 
 void TitleScene::DrawGui()
@@ -168,5 +170,19 @@ void TitleScene::DrawGui()
     {
         SwitchToScene(SCENE_EXIT);
     }
+    ImGui::End();
+}
+
+void TitleScene::DrawInfoMenu()
+{
+    Rect rect = GetSystem().GetWindowSize();
+    const int windowHeight = 30;
+
+    ImGui::SetNextWindowPos(ImVec2(0, rect.h - windowHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(100, windowHeight), ImGuiCond_Always);
+
+    ImGui::Begin("InfoMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground  | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Text("%s", mVersion.c_str());
+
     ImGui::End();
 }

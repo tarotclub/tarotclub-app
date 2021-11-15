@@ -71,7 +71,7 @@ void Application::Update(const Log::Infos &info)
 int Application::Loop()
 {
     // Initialize all scenes and stuff
-    mGfx.AddScene(std::make_shared<TitleScene>(mGfx), SCENE_TITLE);
+    mGfx.AddScene(std::make_shared<TitleScene>(mGfx, TAROTCLUB_APP_VERSION), SCENE_TITLE);
     mGfx.AddScene(std::make_shared<LocalGameScene>(mGfx, *this, mCtx, mNet), SCENE_LOCAL_GAME);
     mGfx.AddScene(std::make_shared<OnlineGameScene>(mGfx, *this, mCtx), SCENE_ONLINE_GAME);
 

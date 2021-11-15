@@ -17,6 +17,9 @@
 #include "title-scene.h"
 #include "board-scene.h"
 
+#define TAROTCLUB_APP_VERSION   "3.0.0"
+
+
 class Application : public Observer<Log::Infos>, public INetClientEvent, public IBoardEvent
 {
 public:
