@@ -100,6 +100,7 @@ public:
     BoardScene(GfxSystem &system, IBoardEvent &event, PlayerContext &ctx, uint32_t scene);
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
+    virtual void OnActivate(SDL_Renderer *renderer) override;
     virtual void Update(double deltaTime) override;
     virtual void Draw(SDL_Renderer *renderer) override;
     virtual void ProcessEvent(const SDL_Event &event) override;
@@ -109,6 +110,8 @@ private:
     PlayerContext &mCtx;
     uint32_t mSceneType;
     BoardHud    mHud;
+
+    SDL_Texture *mBg;
 
     std::map<std::string, std::shared_ptr<GfxCard>> mFullDeck;
 

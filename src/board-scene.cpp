@@ -5,6 +5,27 @@
 #include "IconsMaterialDesign.h"
 #include "IconsFontAwesome5.h"
 
+/**
+ * interpolate 2 RGB colors
+ * @param color1    integer containing color as 0x00RRGGBB
+ * @param color2    integer containing color as 0x00RRGGBB
+ * @param fraction  how much interpolation (0..1)
+ * - 0: full color 1
+ * - 1: full color 2
+ * @return the new color after interpolation
+ */
+SDL_Color interpolate(SDL_Color color1, SDL_Color color2, float fraction)
+{
+    SDL_Color c;
+    c.a = 255;
+
+    c.r = (int) ((color2.r - color1.r) * fraction + color1.r);
+    c.g = (int) ((color2.g - color1.g) * fraction + color1.g);
+    c.b = (int) ((color2.b - color1.b) * fraction + color1.b);
+
+    return c;
+}
+
 BoardScene::BoardScene(GfxSystem &system, IBoardEvent &event, PlayerContext &ctx, uint32_t scene)
     : Scene(system)
     , mEvent(event)
@@ -25,9 +46,69 @@ BoardScene::BoardScene(GfxSystem &system, IBoardEvent &event, PlayerContext &ctx
     }
 }
 
+float euclidean_distance(SDL_Point center, SDL_Point point){
+    float distance = std::sqrt(
+        std::pow(center.x - point.x, 2) + std::pow(center.y - point.y, 2));
+    return distance;
+}
+
+
 void BoardScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
+
+    Uint32 pixelFormat = SDL_PIXELFORMAT_RGBA32;
+    mBg = SDL_CreateTexture(renderer, pixelFormat, SDL_TEXTUREACCESS_TARGET, GetSystem().GetWindowSize().w, GetSystem().GetWindowSize().h);
+
+    SDL_PixelFormat * fmt = SDL_AllocFormat(pixelFormat);
+
+    SDL_Point center;
+
+    center.x = GetSystem().GetWindowSize().w / 2;
+    center.y = GetSystem().GetWindowSize().h / 2;
+
+    SDL_SetRenderTarget(renderer, mBg);
+    SDL_Point point;
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+
+    SDL_Color fromColor;
+    fromColor.r = 0x09;
+    fromColor.g = 0x72;
+    fromColor.b = 0x00;
+    fromColor.a = 255;
+
+    SDL_Color toColor;
+    toColor.r = 0x05;
+    toColor.g = 0x2f;
+    toColor.b = 0x01;
+    toColor.a = 255;
+
+    for(int row=0; row<GetSystem().GetWindowSize().h; row++){
+        for(int col=0; col<GetSystem().GetWindowSize().w; col++){
+            point.x = col;
+            point.y = row;
+
+            float d = euclidean_distance(center, point);
+
+          //  float a = (d - center.y) / (d - GetSystem().GetWindowSize().h);
+
+            float a = d * (50.0 / GetSystem().GetWindowSize().w + 0.1) * 0.01;
+
+            SDL_Color c = interpolate(fromColor, toColor, a);
+
+            SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
+            SDL_RenderDrawPoint(renderer, col, row);
+        }
+    }
+
+    SDL_SetRenderTarget(renderer, NULL);
+
+    SDL_FreeFormat(fmt);
+}
+
+void BoardScene::OnActivate(SDL_Renderer *renderer)
+{
+    Scene::OnActivate(renderer);
 }
 
 static const SDL_Point gCardPositions[5] = {
@@ -113,14 +194,19 @@ void BoardScene::ShowSouthCards()
 // radial-gradient(#40845c, #026a2d); /* vert foncé: #026a2d; */
 void BoardScene::Draw(SDL_Renderer *renderer)
 {
-    // Select the color for drawing.
-    SDL_SetRenderDrawColor(renderer, 0x02, 0x6a, 0x2d, 255);
+    // Rendu du background
+    SDL_Rect r;
 
-    // Clear the entire screen to our selected color.
-    SDL_RenderClear(renderer);
+    r.w = GetSystem().GetWindowSize().w;
+    r.h = GetSystem().GetWindowSize().h;
+    r.x = 0;
+    r.y = 0;
+    SDL_RenderCopyEx(renderer, mBg, NULL, &r, 0.0, NULL, SDL_FLIP_NONE);
 
+    // Rendu des entités de la scène
     Scene::Draw(renderer);
 
+    // HUD
     mHud.ToolbarUI(mEvent);
 
     if (mCtx.mMyself.IsInTable())
