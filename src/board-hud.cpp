@@ -189,7 +189,7 @@ void BoardHud::DrawResult(IBoardEvent &event)
 void BoardHud::ToolbarUI(IBoardEvent &event)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(100, 40));
+    ImGui::SetNextWindowSize(ImVec2(80, 40));
 
     ImGuiWindowFlags window_flags = 0
         | ImGuiWindowFlags_NoTitleBar

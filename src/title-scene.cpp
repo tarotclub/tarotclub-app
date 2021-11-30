@@ -22,7 +22,7 @@ public:
         int mTileWidth = 0;
         int mTileHeight = 0;
 
-        SDL_Texture *tileTexture = IMG_LoadTexture(renderer, "assets/hud/tile_bg1.png");
+        SDL_Texture *tileTexture = GfxEngine::LoadImage(renderer, "assets/hud/tile_bg1.png");
 
 
         // get the width and height of the texture

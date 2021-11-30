@@ -29,6 +29,7 @@ set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/Network.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/Session.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/Identity.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/TarotContext.cpp
 )
 
 set(PROJECT_SOURCES
@@ -48,6 +49,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/Embedded.cpp
     ${TAROT_ROOT}/src/Embedded.h
     ${TAROT_ROOT}/src/glad.c
+    ${TAROT_ROOT}/src/stb_image.h
 
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp

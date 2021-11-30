@@ -4,7 +4,6 @@
 // SDL
 #include "glad/glad.h"
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 
 // Dear ImGui
 #include "imgui_impl_sdl.h"
@@ -427,6 +426,7 @@ public:
     void AddScene(std::shared_ptr<Scene> scene, uint32_t id);
     void SwitchSceneTo(uint32_t sceneId);
 
+    static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);
 private:
     SDL_GLContext gl_context;
     uint32_t mWidth = 1152;
