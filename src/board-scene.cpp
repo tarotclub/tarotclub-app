@@ -146,10 +146,10 @@ void BoardScene::Update(double deltaTime)
             sprite->SetZ(z++);
             sprite->SetVisible(true);
 
-            Place rel = mCtx.mMyself.place.Relative(p, mCtx.mNbPlayers);
+            Place rel = mCtx.mMyself.place.Relative(p, mCtx.mGameState.mNbPlayers);
             sprite->SetPos(gCardPositions[rel.Value()].x, gCardPositions[rel.Value()].y);
             sprite->SetAngle(0);
-            p = p.Next(mCtx.mNbPlayers);
+            p = p.Next(mCtx.mGameState.mNbPlayers);
         }
     }
 }
@@ -328,7 +328,7 @@ void BoardScene::DrawCentralGame()
     for (auto &o : oppo)
     {
         //   std::cout << "Oppo: " << o.identity.nickname << "Pos: " << o.place.ToString() << std::endl;
-        Place rel = mCtx.mMyself.place.Relative(o.place, mCtx.mNbPlayers);  // relative place
+        Place rel = mCtx.mMyself.place.Relative(o.place, mCtx.mGameState.mNbPlayers);  // relative place
         bool select = mCtx.mCurrentPlayer == o.place;
         std::string taker;
 

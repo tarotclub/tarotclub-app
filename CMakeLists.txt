@@ -53,7 +53,7 @@ add_executable(${PROJECT_NAME}
     ${TAROT_CORE_SRCS}
 )
 
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBS} OpenGL::GL  pthread icl)
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBS} OpenGL::GL  pthread icl dl)
 target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_HEADERS} ${TAROT_INCLUDES})
 
