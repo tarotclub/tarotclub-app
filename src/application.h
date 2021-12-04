@@ -9,6 +9,7 @@
 #include "Server.h"
 #include "Network.h"
 #include "ClientConfig.h"
+#include "i-application.h"
 
 #include <list>
 #include <deque>
@@ -19,8 +20,7 @@
 
 #define TAROTCLUB_APP_VERSION   "3.0.0"
 
-
-class Application : public Observer<Log::Infos>, public INetClientEvent, public IBoardEvent
+class Application : public Observer<Log::Infos>, public INetClientEvent, public IBoardEvent, public IApplication
 {
 public:
     Application(INetClient &net);
@@ -29,6 +29,9 @@ public:
     bool Initialize();
     int Loop();
     void Stop();
+
+    // From IApplication
+    bool IsLogged() override { return mLogged; }
 
 private:
     enum GameType {
@@ -50,12 +53,14 @@ private:
     virtual void SendMyBid() override;
     virtual void SendMyCard(const Card &c) override;
     virtual void ConfigChanged() override;
-    virtual void ClickOnBoard();
+    virtual void ClickOnBoard() override;
 
     INetClient &mNet;
     PlayerContext mCtx;
     GameType mGameType = GAME_TYPE_LOCAL;
     ClientConfig mClientConfig;
+
+    bool mLogged = false;
 
     ThreadQueue<Request> mNetRequests;
     std::vector<Reply> mNetReplies; // pas besoin d'une queue car l'envoi se réalise dans le thread applicatif (les sockets sont multi-threads

@@ -49,6 +49,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/Embedded.cpp
     ${TAROT_ROOT}/src/Embedded.h
     ${TAROT_ROOT}/src/glad.c
+    ${TAROT_ROOT}/src/http-client.h
     ${TAROT_ROOT}/src/stb_image.h
 
     ${IMGUI_DIR}/imgui.cpp

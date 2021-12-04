@@ -12,17 +12,6 @@
 #include "Embedded.h"
 #include "application.h"
 
-/*
- *
- *
-ImGui::Dummy(ImVec2(0.0f, 1.0f));
-ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Platform");
-ImGui::Text("%s", SDL_GetPlatform());
-ImGui::Text("CPU cores: %d", SDL_GetCPUCount());
-ImGui::Text("RAM: %.2f GB", SDL_GetSystemRAM() / 1024.0f);
-
-*/
-
 static const std::string localGameKey = "1234567890abcdef";
 static const std::string localPassPhrase = "lacaravanepasse";
 static const std::string localWebId1 = "southId";
@@ -143,7 +132,6 @@ extern "C" int main(int argc, char *argv[])
         mBots.Initialize(botId, ident[i].nickname, localGameKey, localPassPhrase);
         mBots.ConnectBot(botId, "127.0.0.1", 4269U);
     }
-
 
     client.Start();
 
