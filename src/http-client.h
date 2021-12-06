@@ -1,6 +1,6 @@
 #ifndef HTTP_CLIENT_H
 #define HTTP_CLIENT_H
-
+#define SEHE_USE_SSL
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -8,63 +8,122 @@
 #include "asio.hpp"
 #include "asio/ssl.hpp"
 #include "openssl/ssl3.h"
+#include "HttpProtocol.h"
 
-using asio::ip::tcp;
+//using asio::ip::tcp;
 using std::placeholders::_1;
 using std::placeholders::_2;
 
-enum { max_length = 1024 };
+enum { max_length = 8*1024 };
 
 class HttpClient
 {
 public:
   HttpClient(asio::io_context& io_context,
       asio::ssl::context& context,
-      const tcp::resolver::results_type& endpoints)
-    : socket_(io_context, context)
+      asio::ip::tcp::resolver::iterator endpoint_iterator)
+    : io_ctx_(io_context)
+    , socket_(io_context, context)
+    , deadline_(io_context)
   {
     socket_.set_verify_mode(asio::ssl::verify_none);
-//    socket_.set_verify_callback(
-//        std::bind(&HttpClient::verify_certificate, this, _1, _2));
-
-    connect(endpoints);
+    start_connect(endpoint_iterator);
+    // Start the deadline actor. You will note that we're not setting any
+    // particular deadline here. Instead, the connect and input actors will
+    // update the deadline prior to each asynchronous operation.
+    deadline_.async_wait(std::bind(&HttpClient::check_deadline, this));
   }
+
+  // This function terminates all the actors to shut down the connection. It
+  // may be called by the user of the client class, or by the class itself in
+  // response to graceful termination or an unrecoverable error.
+    void stop()
+    {
+        stopped_ = true;
+        io_ctx_.stop();
+        deadline_.cancel();
+        socket_.shutdown();
+    }
 
 private:
-  bool verify_certificate(bool preverified,
-      asio::ssl::verify_context& ctx)
+  void check_deadline()
   {
-    // The verify callback can be used to check whether the certificate that is
-    // being presented is valid for the peer. For example, RFC 2818 describes
-    // the steps involved in doing this for HTTPS. Consult the OpenSSL
-    // documentation for more details. Note that the callback is called once
-    // for each certificate in the certificate chain, starting from the root
-    // certificate authority.
+    if (stopped_)
+      return;
 
-    // In this example we will simply print the certificate's subject name.
-    char subject_name[256];
-    X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
-    X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-    std::cout << "Verifying " << subject_name << "\n" << std::endl;
+    // Check whether the deadline has passed. We compare the deadline against
+    // the current time since a new asynchronous operation may have moved the
+    // deadline before this actor had a chance to run.
+    if (deadline_.expiry() <= asio::steady_timer::clock_type::now())
+    {
+      // The deadline has passed. The socket is closed so that any outstanding
+      // asynchronous operations are cancelled.
+      socket_.shutdown();
 
-    return preverified;
+      // There is no longer an active deadline. The expiry is set to the
+      // maximum time point so that the actor takes no action until a new
+      // deadline is set.
+      deadline_.expires_at(asio::steady_timer::time_point::max());
+    }
+
+    // Put the actor back to sleep.
+    deadline_.async_wait(std::bind(&HttpClient::check_deadline, this));
   }
 
-  void connect(const tcp::resolver::results_type& endpoints)
+  void start_connect(asio::ip::tcp::resolver::iterator endpoint_iter)
   {
-    asio::async_connect(socket_.lowest_layer(), endpoints,
-        [this](const std::error_code& error,
-          const tcp::endpoint& /*endpoint*/)
-        {
-          if (!error)
-          {
-            handshake();
-          }
-          else
-          {
-            std::cout << "Connect failed: " << error.message() << "\n" << std::endl;
-          }
-        });
+      if (endpoint_iter != asio::ip::tcp::resolver::iterator())
+      {
+        std::cout << "Trying " << endpoint_iter->endpoint() << "...\n" << std::endl;
+
+        // Set a deadline for the connect operation.
+        deadline_.expires_after(std::chrono::seconds(5));
+
+        asio::async_connect(socket_.lowest_layer(), endpoint_iter, std::bind(&HttpClient::handle_connect, this, _1, _2));
+      }
+      else
+      {
+          stop();
+      }
+  }
+
+  void handle_connect(const std::error_code& error,
+      asio::ip::tcp::resolver::results_type::iterator endpoint_iter)
+  {
+    if (stopped_)
+      return;
+
+    // The async_connect() function automatically opens the socket at the start
+    // of the asynchronous operation. If the socket is closed at this time then
+    // the timeout handler must have run first.
+    if (!socket_.lowest_layer().is_open())
+    {
+      std::cout << "Connect timed out\n";
+
+      // Try the next available endpoint.
+      start_connect(++endpoint_iter);
+    }
+
+    // Check if the connect operation failed before the deadline expired.
+    else if (error)
+    {
+      std::cout << "Connect error: " << error.message() << "\n";
+
+      // We need to close the socket used in the previous connection attempt
+      // before starting a new one.
+      socket_.shutdown();
+
+      // Try the next available endpoint.
+      start_connect(++endpoint_iter);
+    }
+
+    // Otherwise we have successfully established a connection.
+    else
+    {
+      std::cout << "Connected to " << endpoint_iter->endpoint() << "\n";
+
+        handshake();
+    }
   }
 
   void handshake()
@@ -74,7 +133,9 @@ private:
         {
           if (!error)
           {
-            send_request();
+              // Start the input actor.
+                start_read();
+                start_write();
           }
           else
           {
@@ -82,48 +143,176 @@ private:
           }
         });
   }
+  void start_read()
+    {
+      // Set a deadline for the read operation.
+      deadline_.expires_after(std::chrono::seconds(30));
 
-  void send_request()
+      // Start an asynchronous operation to read a newline-delimited message.
+      asio::async_read_until(socket_,
+          asio::dynamic_buffer(input_buffer_), '\n',
+          std::bind(&HttpClient::handle_read, this, _1, _2));
+    }
+
+  void handle_read(const std::error_code& error, std::size_t n)
   {
-    std::cout << "Send request" << std::endl;
-    std::string request = "COUCOU";
+    if (stopped_)
+      return;
 
-    asio::async_write(socket_,
-        asio::buffer(request, request.size()),
-        [this](const std::error_code& error, std::size_t length)
-        {
-          if (!error)
-          {
-            receive_response(length);
-          }
-          else
-          {
-            std::cout << "Write failed: " << error.message() << "\n" << std::endl;
-          }
-        });
+    if (!error)
+    {
+      // Extract the newline-delimited message from the buffer.
+      std::string line(input_buffer_.substr(0, n - 1));
+      input_buffer_.erase(0, n);
+
+      // Empty messages are heartbeats and so ignored.
+      if (!line.empty())
+      {
+        std::cout << "Received: " << line << "\n";
+      }
+
+      start_read();
+    }
+    else
+    {
+      std::cout << "Error on receive: " << error.message() << "\n";
+
+      stop();
+    }
   }
 
-  void receive_response(std::size_t length)
+  void start_write()
   {
-    asio::async_read(socket_,
-        asio::buffer(reply_, length),
-        [this](const std::error_code& error, std::size_t length)
-        {
-          if (!error)
-          {
-            std::cout << "Reply: ";
-            std::cout.write(reply_, length);
-            std::cout << "\n" << std::endl;
-          }
-          else
-          {
-            std::cout << "Read failed: " << error.message() << "\n" << std::endl;
-          }
-        });
+    if (stopped_)
+      return;
+
+    HttpRequest r;
+
+    r.headers["Host"] = "tarotclub.fr";
+    r.headers["Accept"] = "*/*";
+    r.headers["Connection"] = "close";
+
+    std::string request = HttpProtocol::GenerateRequest(r);
+
+    // Start an asynchronous operation to send a heartbeat message.
+    asio::async_write(socket_, asio::buffer(request),
+        std::bind(&HttpClient::handle_write, this, _1));
   }
 
-  asio::ssl::stream<tcp::socket> socket_;
+  void handle_write(const std::error_code& error)
+  {
+    if (stopped_)
+      return;
+
+    if (!error)
+    {
+      std::cout << "Request sent success\n" << std::endl;
+    }
+    else
+    {
+      std::cout << "Error on heartbeat: " << error.message() << "\n" << std::endl;
+
+      stop();
+    }
+  }
+
+        // Read the response status line. The response_ streambuf will
+        // automatically grow to accommodate the entire line. The growth may be
+        // limited by passing a maximum size to the streambuf constructor.
+//        boost::asio::async_read_until(socket_, response_, "\r\n",
+//            boost::bind(&client::handle_read_status_line, this,
+//              boost::asio::placeholders::error));
+
+/*
+    void handle_read_status_line(const boost::system::error_code& err)
+    {
+      if (!err)
+      {
+        // Check that response is OK.
+        std::istream response_stream(&response_);
+        std::string http_version;
+        response_stream >> http_version;
+        unsigned int status_code;
+        response_stream >> status_code;
+        std::string status_message;
+        std::getline(response_stream, status_message);
+        if (!response_stream || http_version.substr(0, 5) != "HTTP/")
+        {
+          std::cout << "Invalid response\n";
+          return;
+        }
+        if (status_code != 200)
+        {
+          std::cout << "Response returned with status code ";
+          std::cout << status_code << "\n";
+          return;
+        }
+
+        // Read the response headers, which are terminated by a blank line.
+        asio::async_read_until(socket_, response_, "\r\n\r\n",
+            std::bind(&client::handle_read_headers, this,
+              boost::asio::placeholders::error));
+      }
+      else
+      {
+        std::cout << "Error: " << err << "\n";
+      }
+    }
+
+    void handle_read_headers(const boost::system::error_code& err)
+    {
+      if (!err)
+      {
+        // Process the response headers.
+        std::istream response_stream(&response_);
+        std::string header;
+        while (std::getline(response_stream, header) && header != "\r")
+          std::cout << header << "\n";
+        std::cout << "\n";
+
+        // Write whatever content we already have to output.
+        if (response_.size() > 0)
+          std::cout << &response_;
+
+        // Start reading remaining data until EOF.
+        boost::asio::async_read(socket_, response_,
+            boost::asio::transfer_at_least(1),
+            boost::bind(&client::handle_read_content, this,
+              boost::asio::placeholders::error));
+      }
+      else
+      {
+        std::cout << "Error: " << err << "\n";
+      }
+    }
+
+    void handle_read_content(const boost::system::error_code& err)
+    {
+      if (!err)
+      {
+        // Write all of the data that has been read so far.
+        std::cout << &response_;
+
+        // Continue reading remaining data until EOF.
+        boost::asio::async_read(socket_, response_,
+            boost::asio::transfer_at_least(1),
+            boost::bind(&client::handle_read_content, this,
+              boost::asio::placeholders::error));
+      }
+      else if (err != boost::asio::error::eof)
+      {
+        std::cout << "Error: " << err << "\n";
+      }
+    }
+    */
+
+  asio::io_context& io_ctx_;
+  bool stopped_ = false;
+  asio::ip::tcp::resolver::results_type endpoints_;
+  asio::ssl::stream<asio::ip::tcp::socket> socket_;
   char reply_[max_length];
+  std::string input_buffer_;
+  asio::steady_timer deadline_;
 };
 
 #endif // HTTP_CLIENT_H

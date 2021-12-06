@@ -115,7 +115,7 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     , mVersion(version)
     , resolver(io_context)
     , socket(io_context)
-    , ssl_ctx(asio::ssl::context::sslv23)
+    , ssl_ctx(asio::ssl::context::tls)
 {
     auto bg = std::make_shared<Background>(GetSystem());
     auto logo = std::make_shared<Logo>(GetSystem());
@@ -201,23 +201,38 @@ void TitleScene::ConnectToWebsite()
 #endif
     hostName = "tarotclub.fr";
 
+    io_context.restart();
 
     // give it some work, to prevent premature exit
     asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
-    mHttpThread = std::thread([&] {
+//    mHttpThread = std::thread([&] {
         try
         {
-//            ssl_ctx.set_verify_mode(asio::ssl::verify_none);
-//            ssl_ctx.load_verify_file("ca.pem");
-            auto endpoints = resolver.resolve(hostName.c_str(), "443");
-            HttpClient c(io_context, ssl_ctx, endpoints);
+//            tcp::resolver::query query(tcp::v4(), hostName,  "", asio::ip::resolver_query_base::numeric_service);
+
+            asio::ip::tcp::resolver::query query(hostName, "443");
+            asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
+
+//            auto endpoints = resolver.resolve(query);
+
+//            for (auto &ep : endpoints)
+//            {
+//                std::cout << "EP: " << ep.endpoint() << std::endl;
+//            }
+            HttpClient c(io_context, ssl_ctx, iterator);
             io_context.run();
+
+        //    mHttpThread = std::thread(&asio::io_context::run, &io_context);
+
+
+
+            std::cout << "EXIT"<<std::endl;
         }
         catch (std::exception& e)
         {
             std::cerr << "Exception: " << e.what() << "\n";
         }
-    });
+//    });
 
 
 
