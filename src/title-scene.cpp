@@ -1,6 +1,8 @@
 #include "title-scene.h"
 #include "scenes.h"
 #include "http-client.h"
+#include "JsonValue.h"
+#include <string>
 
 class Background : public Entity
 {
@@ -124,6 +126,14 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     AddEntity(logo);
 }
 
+TitleScene::~TitleScene()
+{
+    if (mHttpThread.joinable())
+    {
+        mHttpThread.join();
+    }
+}
+
 void TitleScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
@@ -194,135 +204,55 @@ void TitleScene::DrawMainMenu()
 
 void TitleScene::ConnectToWebsite()
 {
-#ifdef TAROT_DEBUG
-    std::string hostName = "127.0.0.1";
-#else
-    std::string hostName = "tarotclub.fr";
-#endif
-    hostName = "tarotclub.fr";
-
-    io_context.restart();
+    if (mHttpThread.joinable())
+    {
+        mHttpThread.join();
+    }
 
     // give it some work, to prevent premature exit
-    asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
-//    mHttpThread = std::thread([&] {
+    mHttpThread = std::thread([&] {
         try
         {
-//            tcp::resolver::query query(tcp::v4(), hostName,  "", asio::ip::resolver_query_base::numeric_service);
+            HttpRequest r;
+            JsonObject obj;
+            obj.AddValue("login", "anthony");
+            obj.AddValue("password", "1234");
 
-            asio::ip::tcp::resolver::query query(hostName, "443");
+            r.body = obj.ToString();
+            r.headers["Host"] = "tarotclub.fr";
+            r.headers["Accept"] = "*/*";
+            r.headers["Connection"] = "close";
+            r.headers["Content-Type"] = "application/json";
+            r.headers["Content-Length"] = std::to_string(r.body.size());
+
+            r.method = "POST";
+            r.query = "/api/v1/auth/signin";
+
+            io_context.restart();
+            asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
+            asio::ip::tcp::resolver::query query("tarotclub.fr", "443");
             asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-
-//            auto endpoints = resolver.resolve(query);
-
-//            for (auto &ep : endpoints)
-//            {
-//                std::cout << "EP: " << ep.endpoint() << std::endl;
-//            }
-            HttpClient c(io_context, ssl_ctx, iterator);
+            HttpClient c(io_context, ssl_ctx, iterator, r);
             io_context.run();
 
-        //    mHttpThread = std::thread(&asio::io_context::run, &io_context);
+            std::cout << "EXIT" <<std::endl;
+//            std::string payload = c.get_data();
 
+//              if (c.is_timeout())
+//            {
+//                std::cout << "Timeout!" <<std::endl;
+//            }
+//            else
+//            {
 
-
-            std::cout << "EXIT"<<std::endl;
+//            }
         }
         catch (std::exception& e)
         {
             std::cerr << "Exception: " << e.what() << "\n";
         }
-//    });
+    });
 
-
-
-    // tcp::resolver::results_type& endpoints
-/*
-    asio::async_connect(socket, endpoints,
-        [this](std::error_code error, asio::ip::tcp::endpoint)
-        {
-            if ((asio::error::eof == error) || (asio::error::connection_reset == error))
-            {
-                Disconnect();
-            }
-            else if (!error)
-            {
-                TLogInfo("Client " + mWebId + " connected");
-                SendToHost(BuildConnectionPacket());
-                ReadHeader();
-            }
-        }
-    );
-
-    while(!mQuitThread)
-    {
-        if (!connected)
-        {
-            client.Initialize();
-            if (client.Connect(mHost, 8989))
-            {
-                connected = true;
-            }
-            else
-            {
-                TLogError("[WEBSITE] Cannot join server");
-            }
-        }
-        else
-        {
-//            TLogInfo("[WEBSITE] Sending register or status request");
-            std::string response;
-            if (client.RecvWithTimeout(response, 2048, 500))
-            {
-                JsonReader reader;
-                JsonValue json;
-
-                if (reader.ParseString(json, response))
-                {
-                    if (json.IsObject())
-                    {
-                        JsonObject rcvObj = json.GetObj();
-
-                        if (rcvObj.HasValue("cmd"))
-                        {
-                            JsonObject replyObj;
-                            if (HandleCommand(rcvObj.GetValue("cmd").GetString(), rcvObj, replyObj))
-                            {
-                                client.Send(replyObj.ToString(0));
-                            }
-                        }
-                        else
-                        {
-                            TLogError("[WEBSITE] Invalid reply. Error: " + rcvObj.GetValue("message").GetString());
-                        }
-                    }
-                    else
-                    {
-                        TLogError("[WEBSITE] Reply body is not an object");
-                    }
-                }
-                else
-                {
-                    TLogError("[WEBSITE] Reply body is not JSON: " + response);
-                }
-            }
-            else
-            {
-                bool req_success = client.Send(UpdateServerStatus());
-
-                if (!req_success)
-                {
-                    client.Close();
-                    connected = false;
-                    TLogError("[WEBSITE] Sending request failure");
-                }
-            }
-
-
-        } // if connected
-
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        */
 }
 
 void TitleScene::DrawOnlineMenu()

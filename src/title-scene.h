@@ -12,6 +12,7 @@ class TitleScene : public Scene
 {
 public:
     TitleScene(GfxSystem &system, IApplication &app, const std::string &version);
+    ~TitleScene();
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
 
