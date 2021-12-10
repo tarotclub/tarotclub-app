@@ -32,6 +32,7 @@ public:
 
     // From IApplication
     bool IsLogged() override { return mLogged; }
+    void SetLogged(const Identity &ident);
 
 private:
     enum GameType {
@@ -58,7 +59,6 @@ private:
     INetClient &mNet;
     PlayerContext mCtx;
     GameType mGameType = GAME_TYPE_LOCAL;
-    ClientConfig mClientConfig;
 
     bool mLogged = false;
 

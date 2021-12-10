@@ -41,10 +41,9 @@ Application::Application(INetClient &net)
     , mNet(net)
 {
 
-    mCtx.mMyself.identity.nickname = "Belegar";
+    mCtx.mOptions.identity.username = "Belegar";
 
-    mClientConfig.Load(System::HomePath() + ClientConfig::DEFAULT_CLIENT_CONFIG_FILE);
-    mCtx.mOptions = mClientConfig.GetOptions();
+    ClientConfig::Load(mCtx.mOptions, System::HomePath() + ClientConfig::DefaultConfigFile());
 }
 
 Application::~Application()
@@ -131,6 +130,12 @@ void Application::Stop()
 
 }
 
+void Application::SetLogged(const Identity &ident)
+{
+    mLogged = true;
+    mCtx.mOptions.identity = ident;
+}
+
 bool Application::Deliver(const Request &req)
 {
     bool ret = true;
@@ -172,8 +177,7 @@ void Application::SendMyCard(const Card &c)
 
 void Application::ConfigChanged()
 {
-    mClientConfig.SetOptions(mCtx.mOptions);
-    mClientConfig.Save(System::HomePath() + ClientConfig::DEFAULT_CLIENT_CONFIG_FILE);
+    ClientConfig::Save(mCtx.mOptions, ClientConfig::DefaultConfigFile());
     ApplyOptions();
 }
 

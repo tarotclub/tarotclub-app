@@ -1,0 +1,15 @@
+{
+    "background_color":"#004f00",
+    "cards_order":"TCHDS",
+    "click_to_clean":true,
+    "delay_before_cleaning":1500,
+    "delay_between_players":500,
+    "identity":{
+        "avatar":"Fry",
+        "gender":"male",
+        "name":"Fry"
+        },
+    "language":0,
+    "show_avatars":true,
+    "version":"5"
+    }

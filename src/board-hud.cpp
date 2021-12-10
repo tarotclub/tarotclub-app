@@ -252,7 +252,7 @@ void BoardHud::DrawChatWindow(GfxSystem &system, IBoardEvent &event)
                 Users::Entry entry;
                 if (mCtx.mUsers.GetEntryByIndex(n, entry))
                 {
-                    if (ImGui::Selectable(entry.identity.nickname.c_str(), is_selected))
+                    if (ImGui::Selectable(entry.identity.username.c_str(), is_selected))
                     {
                         item_current_idx = n;
                     }

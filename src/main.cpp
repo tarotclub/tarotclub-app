@@ -86,7 +86,7 @@ void task_server()
 
         for (std::uint32_t i = 0U; i < (sizeof(ident) / sizeof(ident[0])); i++)
         {
-            s.AddClient(ident[i].nickname, localGameKey, localPassPhrase);
+            s.AddClient(ident[i].username, localGameKey, localPassPhrase);
         }
 
         gServerStarted.Push(true);
@@ -129,7 +129,7 @@ extern "C" int main(int argc, char *argv[])
     {
         std::uint32_t botId = mBots.AddBot(Protocol::TABLES_UID, ident[i], 0U, buffer);
         mIds.push_back(botId);
-        mBots.Initialize(botId, ident[i].nickname, localGameKey, localPassPhrase);
+        mBots.Initialize(botId, ident[i].username, localGameKey, localPassPhrase);
         mBots.ConnectBot(botId, "127.0.0.1", 4269U);
     }
 

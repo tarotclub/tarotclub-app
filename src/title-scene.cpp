@@ -2,7 +2,9 @@
 #include "scenes.h"
 #include "http-client.h"
 #include "JsonValue.h"
+#include "JsonReader.h"
 #include <string>
+#include "Log.h"
 
 class Background : public Entity
 {
@@ -120,10 +122,10 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     , ssl_ctx(asio::ssl::context::tls)
 {
     auto bg = std::make_shared<Background>(GetSystem());
-    auto logo = std::make_shared<Logo>(GetSystem());
+    mLogo = std::make_shared<Logo>(GetSystem());
 
     AddEntity(bg);
-    AddEntity(logo);
+    AddEntity(mLogo);
 }
 
 TitleScene::~TitleScene()
@@ -147,16 +149,15 @@ void TitleScene::OnActivate(SDL_Renderer *renderer)
 void TitleScene::Draw(SDL_Renderer *renderer)
 {
     Scene::Draw(renderer);
-
     if (mMenu == MENU_MAIN)
     {
         DrawMainMenu();
+        DrawInfoMenu();
     }
     else if (mMenu == MENU_ONLINE)
     {
         DrawOnlineMenu();
     }
-    DrawInfoMenu();
 }
 
 void TitleScene::DrawMainMenu()
@@ -191,6 +192,7 @@ void TitleScene::DrawMainMenu()
 
     if (ImGui::Button("Online game"))
     {
+        mLogo->SetVisible(false);
         mMenu = MENU_ONLINE;
     }
 
@@ -202,8 +204,17 @@ void TitleScene::DrawMainMenu()
 }
 
 
-void TitleScene::ConnectToWebsite()
+void TitleScene::ConnectToWebsite(const std::string &login, const std::string &password)
 {
+    static bool busy = false;
+
+    if (busy)
+    {
+        return;
+    }
+
+    busy = true;
+
     if (mHttpThread.joinable())
     {
         mHttpThread.join();
@@ -215,8 +226,8 @@ void TitleScene::ConnectToWebsite()
         {
             HttpRequest r;
             JsonObject obj;
-            obj.AddValue("login", "anthony");
-            obj.AddValue("password", "1234");
+            obj.AddValue("login", login);
+            obj.AddValue("password", password);
 
             r.body = obj.ToString();
             r.headers["Host"] = "tarotclub.fr";
@@ -235,7 +246,37 @@ void TitleScene::ConnectToWebsite()
             HttpClient c(io_context, ssl_ctx, iterator, r);
             io_context.run();
 
-            std::cout << "EXIT" <<std::endl;
+//            std::cout << "EXIT" <<std::endl;
+
+            busy = false;
+
+            JsonReader reader;
+            JsonValue json;
+
+            if (reader.ParseString(json, c.get_reply().body))
+            {
+                if (json.FindValue("success").GetBool())
+                {
+                    TLogInfo("[WEB] Connected: " + json.ToString());
+                    Identity ident;
+
+                    ident.username = json.FindValue("data:profile:username").GetString();
+                    ident.token = json.FindValue("data:profile:attr:token").GetString();
+                    mApp.SetLogged(ident);
+                    mConnectState = tribool::True;
+                }
+                else
+                {
+                    mConnectState = tribool::False;
+                }
+            }
+            else
+            {
+                TLogError("[ONLINE] Cannot parse reply");
+                mConnectState = tribool::False;
+            }
+
+
 //            std::string payload = c.get_data();
 
 //              if (c.is_timeout())
@@ -250,6 +291,8 @@ void TitleScene::ConnectToWebsite()
         catch (std::exception& e)
         {
             std::cerr << "Exception: " << e.what() << "\n";
+            busy = false;
+            mConnectState = tribool::False;
         }
     });
 
@@ -269,8 +312,12 @@ void TitleScene::DrawOnlineMenu()
         controls_width = 300;
     }
 
-    // position the controls widget in the top-right corner with some margin
-    ImGui::SetNextWindowPos(ImVec2(400, (rect.h /3)), ImGuiCond_Always);
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+
+//    // position the controls widget in the top-right corner with some margin
+//    ImGui::SetNextWindowPos(ImVec2(400, (rect.h /3)), ImGuiCond_Always);
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
@@ -278,21 +325,37 @@ void TitleScene::DrawOnlineMenu()
                 ImGuiCond_Always
                 );
     // create a window and append into it
-    ImGui::Begin("OnlineMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground);
+    ImGui::Begin("OnlineMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
     static ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
 
     if (! mApp.IsLogged())
     {
-        ImGui::Text("Not connected! You cannot join any game server");
+        if (mConnectState == tribool::False)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+            ImGui::Text("Connection error");
+            ImGui::PopStyleColor();
+        }
+        else if (mConnectState == tribool::True)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0,255,0,255));
+            ImGui::Text("Vous êtes connecté.");
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::Text("Not connected! You cannot join any game server");
+        }
+
         static char password[64] = "";
-        static char buf1[64] = "";
-        ImGui::InputText("Login",     buf1, 64);
+        static char login[64] = "";
+        ImGui::InputText("Login",     login, 64);
         ImGui::InputText("Password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
 
         if (ImGui::Button("Connect"))
         {
-            ConnectToWebsite();
+            ConnectToWebsite(login, password);
         }
 
     }
@@ -326,6 +389,7 @@ void TitleScene::DrawOnlineMenu()
 
     if (ImGui::Button("Return to main menu"))
     {
+        mLogo->SetVisible(true);
         mMenu = MENU_MAIN;
     }
     ImGui::End();

@@ -21,14 +21,21 @@ public:
     virtual void Draw(SDL_Renderer *renderer) override;
 
 private:
+    enum tribool: uint8_t {False = 0, True = 1, Unknown = 2};
+
     enum Menus {
         MENU_MAIN,
         MENU_ONLINE,
     };
+
     IApplication &mApp;
+
+    tribool mConnectState = tribool::Unknown;
 
     ImFont* mMenuFont;
     std::string mVersion;
+
+    std::shared_ptr<Image> mLogo;
 
     Menus mMenu = MENU_MAIN;
 
@@ -41,7 +48,7 @@ private:
     void DrawInfoMenu();
     void DrawMainMenu();
     void DrawOnlineMenu();
-    void ConnectToWebsite();
+    void ConnectToWebsite(const std::string &login, const std::string &password);
 };
 
 

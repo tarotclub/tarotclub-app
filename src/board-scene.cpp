@@ -328,18 +328,18 @@ void BoardScene::DrawCentralGame()
     for (auto &o : oppo)
     {
         //   std::cout << "Oppo: " << o.identity.nickname << "Pos: " << o.place.ToString() << std::endl;
-        Place rel = mCtx.mMyself.place.Relative(o.place, mCtx.mGameState.mNbPlayers);  // relative place
-        bool select = mCtx.mCurrentPlayer == o.place;
+        Place rel = mCtx.mMyself.place.Relative(o.player.place, mCtx.mGameState.mNbPlayers);  // relative place
+        bool select = mCtx.mCurrentPlayer == o.player.place;
         std::string taker;
 
-        if (mCtx.mBid.taker == o.place)
+        if (mCtx.mBid.taker == o.player.place)
         {
             taker = "(preneur)";
         }
 
         mHud.PlayerBoxUI(rel.ToString(),
-                    o.identity.nickname + taker,
-                    mCtx.mSits[o.place.Value()].contract.ToString(),
+                    o.identity.username + taker,
+                    mCtx.mSits[o.player.place.Value()].contract.ToString(),
                     gBoxPositions[rel.Value()].x,
                     gBoxPositions[rel.Value()].y, select);
     }
