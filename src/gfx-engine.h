@@ -246,10 +246,10 @@ public:
         mRect.y = y;
     }
 
-    void SetScale(float w, float h)
+    void SetScale(float x, float y)
     {
-        mScale.x = w;
-        mScale.y = h;
+        mScale.x = x;
+        mScale.y = y;
     }
     void SetAngle(float angle)
     {

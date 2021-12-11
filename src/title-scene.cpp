@@ -185,6 +185,11 @@ void TitleScene::DrawMainMenu()
     // create a window and append into it
     ImGui::Begin("MainMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground);
 
+    if (ImGui::Button("Story mode game"))
+    {
+        SwitchToScene(SCENE_STORY_MODE);
+    }
+
     if (ImGui::Button("Start local game"))
     {
         SwitchToScene(SCENE_LOCAL_GAME);

@@ -2,6 +2,7 @@
 #include "Embedded.h"
 #include "scenes.h"
 #include "System.h"
+#include "story-mode-scene.h"
 
 class LocalGameScene : public BoardScene
 {
@@ -73,6 +74,7 @@ int Application::Loop()
     mGfx.AddScene(std::make_shared<TitleScene>(mGfx, *this, TAROTCLUB_APP_VERSION), SCENE_TITLE);
     mGfx.AddScene(std::make_shared<LocalGameScene>(mGfx, *this, mCtx, mNet), SCENE_LOCAL_GAME);
     mGfx.AddScene(std::make_shared<OnlineGameScene>(mGfx, *this, mCtx), SCENE_ONLINE_GAME);
+    mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx, *this), SCENE_STORY_MODE);
 
     mGfx.SwitchSceneTo(SCENE_TITLE); // First scene
 

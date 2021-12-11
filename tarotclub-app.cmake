@@ -44,6 +44,8 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/i-board-event.h
     ${TAROT_ROOT}/src/title-scene.cpp
     ${TAROT_ROOT}/src/title-scene.h
+    ${TAROT_ROOT}/src/story-mode-scene.cpp
+    ${TAROT_ROOT}/src/story-mode-scene.h
     ${TAROT_ROOT}/src/application.cpp
     ${TAROT_ROOT}/src/application.h
     ${TAROT_ROOT}/src/Embedded.cpp

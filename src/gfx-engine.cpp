@@ -134,6 +134,8 @@ bool GfxEngine::Initialize()
     // enable VSync
     SDL_GL_SetSwapInterval(1);
 
+//    SDL_SetRelativeMouseMode(SDL_TRUE);
+
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))

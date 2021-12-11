@@ -7,6 +7,7 @@ enum Scenes {
     SCENE_TITLE,
     SCENE_LOCAL_GAME,
     SCENE_ONLINE_GAME,
+    SCENE_STORY_MODE,
     SCENE_EXIT = 10000
 };
 
