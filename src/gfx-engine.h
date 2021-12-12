@@ -69,108 +69,6 @@ struct Rect : Vector2f
 };
 
 
-/*!
-\brief Draw horizontal line in currently set color
-
-\param renderer The renderer to draw on.
-\param x1 X coordinate of the first point (i.e. left) of the line.
-\param x2 X coordinate of the second point (i.e. right) of the line.
-\param y Y coordinate of the points of the line.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int hline(SDL_Renderer * renderer, Sint16 x1, Sint16 x2, Sint16 y);
-
-
-/*!
-\brief Draw pixel with blending enabled if a<255.
-
-\param renderer The renderer to draw on.
-\param x X (horizontal) coordinate of the pixel.
-\param y Y (vertical) coordinate of the pixel.
-\param r The red color value of the pixel to draw.
-\param g The green color value of the pixel to draw.
-\param b The blue color value of the pixel to draw.
-\param a The alpha value of the pixel to draw.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int pixelRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-
-/*!
-\brief Draw vertical line with blending.
-
-\param renderer The renderer to draw on.
-\param x X coordinate of the points of the line.
-\param y1 Y coordinate of the first point (i.e. top) of the line.
-\param y2 Y coordinate of the second point (i.e. bottom) of the line.
-\param r The red value of the line to draw.
-\param g The green value of the line to draw.
-\param b The blue value of the line to draw.
-\param a The alpha value of the line to draw.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int vlineRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y1, Sint16 y2, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-/*!
-\brief Draw horizontal line with blending.
-
-\param renderer The renderer to draw on.
-\param x1 X coordinate of the first point (i.e. left) of the line.
-\param x2 X coordinate of the second point (i.e. right) of the line.
-\param y Y coordinate of the points of the line.
-\param r The red value of the line to draw.
-\param g The green value of the line to draw.
-\param b The blue value of the line to draw.
-\param a The alpha value of the line to draw.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int hlineRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 x2, Sint16 y, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-
-
-/*!
-\brief Draw box (filled rectangle) with blending.
-
-\param renderer The renderer to draw on.
-\param x1 X coordinate of the first point (i.e. top right) of the box.
-\param y1 Y coordinate of the first point (i.e. top right) of the box.
-\param x2 X coordinate of the second point (i.e. bottom left) of the box.
-\param y2 Y coordinate of the second point (i.e. bottom left) of the box.
-\param r The red value of the box to draw.
-\param g The green value of the box to draw.
-\param b The blue value of the box to draw.
-\param a The alpha value of the box to draw.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int boxRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-
-/*!
-\brief Draw rounded-corner box (filled rectangle) with blending.
-
-\param renderer The renderer to draw on.
-\param x1 X coordinate of the first point (i.e. top right) of the box.
-\param y1 Y coordinate of the first point (i.e. top right) of the box.
-\param x2 X coordinate of the second point (i.e. bottom left) of the box.
-\param y2 Y coordinate of the second point (i.e. bottom left) of the box.
-\param rad The radius of the corner arcs of the box.
-\param r The red value of the box to draw.
-\param g The green value of the box to draw.
-\param b The blue value of the box to draw.
-\param a The alpha value of the box to draw.
-
-\returns Returns 0 on success, -1 on failure.
-*/
-int roundedBoxRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2,
-    Sint16 y2, Sint16 rad, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-
-
 class GfxSystem
 {
 public:
@@ -194,7 +92,7 @@ public:
         mRect.h = 0;
     }
 
-    virtual void Initialize(SDL_Renderer *renderer) { (void) renderer; }
+    virtual void OnCreate(SDL_Renderer *renderer) { (void) renderer; }
 
     // Manage user interaction (mouse, keyboard...)
     virtual void ProcessEvent(const SDL_Event &event)
@@ -294,7 +192,7 @@ public:
 
     ~Image();
 
-    virtual void Initialize(SDL_Renderer *renderer) override;
+    virtual void OnCreate(SDL_Renderer *renderer) override;
 
     virtual void Draw(SDL_Renderer *renderer) override;
 
@@ -326,7 +224,7 @@ public:
     virtual void OnCreate(SDL_Renderer *renderer) {
         for (auto & e : mEntities)
         {
-            e->Initialize(renderer);
+            e->OnCreate(renderer);
         }
     }
     // Called when scene destroyed. Called at most once (if a scene 

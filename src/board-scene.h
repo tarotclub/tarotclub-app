@@ -8,6 +8,7 @@
 #include "i-board-event.h"
 #include "PlayerContext.h"
 #include "board-hud.h"
+#include "SDL2_gfxPrimitives.h"
 
 class GfxCard : public Image
 {

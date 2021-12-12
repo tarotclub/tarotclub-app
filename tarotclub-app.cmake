@@ -53,6 +53,10 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/glad.c
     ${TAROT_ROOT}/src/http-client.h
     ${TAROT_ROOT}/src/stb_image.h
+    ${TAROT_ROOT}/src/SDL2_gfxPrimitives.c
+    ${TAROT_ROOT}/src/SDL2_gfxPrimitives.h
+    ${TAROT_ROOT}/src/SDL2_rotozoom.c
+    ${TAROT_ROOT}/src/SDL2_rotozoom.h
 
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp

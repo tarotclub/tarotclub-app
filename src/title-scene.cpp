@@ -16,9 +16,9 @@ public:
 
     }
 
-    virtual void Initialize(SDL_Renderer *renderer) override
+    virtual void OnCreate(SDL_Renderer *renderer) override
     {
-        Entity::Initialize(renderer);
+        Entity::OnCreate(renderer);
 
         mScreenWidth = GetSystem().GetWindowSize().w;
         mScreenHeight = GetSystem().GetWindowSize().h;

@@ -69,7 +69,6 @@ void BoardScene::OnCreate(SDL_Renderer *renderer)
 
     SDL_SetRenderTarget(renderer, mBg);
     SDL_Point point;
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 
     SDL_Color fromColor;
     fromColor.r = 0x09;
