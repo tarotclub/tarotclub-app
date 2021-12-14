@@ -56,6 +56,41 @@ SDL_Point latLonToOffsets(double latitude, double longitude, int mapWidth, int m
   return { x, y };
 }
 
+double france_lng_radius(double lng1, double lng2)
+{
+    const double radius = (abs(lng1 - lng2) / 360.0) ;
+    return radius;
+}
+
+
+double meridien_distance(double lat1, double lat2)
+{
+    const double lat1Rad = deg2rad(lat1);
+    const double lat2Rad = deg2rad(lat2);
+
+    return earthRadiusKm * abs(lat1Rad - lat2Rad);
+}
+
+double parallele_distance(double lat, double lng1, double lng2)
+{
+    // On calcule le rayon du cercle au niveau de la latitude
+    const double latRad = deg2rad(lat);
+    double rayonLat = earthRadiusKm * cos(latRad);
+
+    // Calcul du périmètre d’un arc de cercle sur cette parallèle
+    double angle = abs(lng1 - lng2);
+    double distance = (angle / 360) * 2 * M_PI * rayonLat;
+
+    return distance;
+}
+
+double mercatorY(double lat)
+{
+    return log(tan(lat/2 + M_PI/4));
+}
+
+
+
 
 StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     : Scene(system)
@@ -95,10 +130,41 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
             lon = results[0][0].GetDouble();
             lat = results[0][1].GetDouble();
 
-         //   city = latLonToOffsets(lat, lon, mMap->GetWZoomed(), mMap->GetHZoomed());
+            // Centre : Saint-Amand-Montrond (46° 43′ 17″ N, 2° 30′ 37″ E)
+            // Latitude : 46.721389 | Longitude : 2.510278
 
-             // Latitude : 46.721389 | Longitude : 2.510278
-            city = latLonToOffsets(46.721389, 2.510278, mMap->GetWZoomed(), mMap->GetHZoomed());
+
+
+            // Distance Entre limalonges et le coin en haut à gauche :
+            double distance = distanceEarth(lat, lon, 42.3333333, -4.795555555555556);
+            std::cout << "LIMALONGES D: " << distance << std::endl;
+
+            double west = deg2rad(-4.795555555555556);
+            double east = deg2rad(8.230555555555556);
+            double south = deg2rad(42.3327778);
+            double north = deg2rad(51.0891667);
+            double ymin = mercatorY(south);
+            double ymax = mercatorY(north);
+
+            double xFactor = mMap->GetWZoomed()/(east - west);
+            double yFactor = mMap->GetHZoomed()/(ymax - ymin);
+
+//            lon = 0;
+            double limalongesW = (deg2rad(lon) - west) * xFactor;
+            double limalongesH = (ymax - mercatorY(deg2rad(lat))) * yFactor;
+
+            double franceH = meridien_distance(42.3327778, 51.0891667);
+            limalongesH = meridien_distance(lat, 51.0891667);
+
+            limalongesH = limalongesH * mMap->GetHZoomed() / franceH;
+
+            std::cout << "LIMALONGES W: " << limalongesW << std::endl;
+            std::cout << "LIMALONGES H: " << limalongesH << std::endl;
+
+            city.x = limalongesW;
+            city.y = limalongesH;
+
+//            city = latLonToOffsets(46.721389, 2.510278, mMap->GetWZoomed(), mMap->GetHZoomed());
             TLogInfo("[STORY] Has results");
         }
     }
@@ -121,7 +187,12 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
 
     Scene::Draw(renderer);
 
-    filledCircleRGBA(renderer, city.x, city.y, 5, 255, 0, 0, 255);
+  //  filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
+
+    vlineRGBA(renderer, city.x, 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
+    hlineRGBA(renderer, 0, mMap->GetWZoomed(), city.y, 255, 0, 0, 255 );
+
+    vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
 }
 
 void StoryModeScene::ProcessEvent(const SDL_Event &event)
@@ -153,8 +224,7 @@ void FranceMap::Draw(SDL_Renderer *renderer)
     SetScale(mZoom, mZoom);
     DrawEx(renderer, GetX(), GetY());
 
-    // Centre : Saint-Amand-Montrond (46° 43′ 17″ N, 2° 30′ 37″ E)
-    // Latitude : 46.721389 | Longitude : 2.510278
+
 }
 
 void FranceMap::ProcessEvent(const SDL_Event &event)
