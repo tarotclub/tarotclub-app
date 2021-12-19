@@ -57,6 +57,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/SDL2_gfxPrimitives.h
     ${TAROT_ROOT}/src/SDL2_rotozoom.c
     ${TAROT_ROOT}/src/SDL2_rotozoom.h
+    ${TAROT_ROOT}/src/assets.cpp
 
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
@@ -72,7 +73,34 @@ set(TAROT_INCLUDES
     ${IMGUI_DIR}/backends
     ${TAROT_ROOT}/libs/tarotclub-core
     ${TAROT_ROOT}/libs/asio
+    ${TAROT_ROOT}/libs/nanosvg/src
     ${TAROT_ROOT}/src
 )
 
+#Creates C resources file from files in given directory
+function(create_resources dir output)
+    #Create empty output file
+    file(WRITE ${output}.c "")
+    file(WRITE ${output}.h "")
+    #Collect input files
+    file(GLOB bins ${dir}/*.png )
+    file(APPEND ${output}.h "const char *embeddedfiles[] = {\n")
+    #Iterate through input files
+    foreach(bin ${bins})
+        #Get short filename
+        string(REGEX MATCH "([^/]+)$" filename ${bin})
+        message("Files: " ${filename})
+        #Replace filename spaces & extension separator for C compatibility
+        string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
+        #Read hex data from file
+        file(READ ${bin} filedata HEX)
+        #Convert hex data for C compatibility
+        string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+        #Append data to output file
+        file(APPEND ${output}.c "const unsigned char ${filename}[] = {${filedata}};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
 
+        file(APPEND ${output}.h "\"${filename}\",\n")
+    endforeach()
+
+    file(APPEND ${output}.h "};\n")
+endfunction()

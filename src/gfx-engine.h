@@ -324,6 +324,8 @@ public:
     void AddScene(std::shared_ptr<Scene> scene, uint32_t id);
     void SwitchSceneTo(uint32_t sceneId);
 
+    static SDL_Texture *LoadSVG(SDL_Renderer *renderer, const char *filename);
+    static SDL_Texture *RenderSVG(SDL_Renderer *renderer, char *data);
     static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);
 private:
     SDL_GLContext gl_context;

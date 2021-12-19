@@ -1,6 +1,6 @@
 #include "story-mode-scene.h"
 #include "SDL2_gfxPrimitives.h"
-
+#include "assets.h"
 
 #define earthRadiusKm 6371.0
 
@@ -97,8 +97,10 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     , mEvent(event)
 {
     mMap = std::make_shared<FranceMap>(GetSystem());
+    mCar = std::make_shared<Car>(GetSystem());
 
-    AddEntity(mMap);
+//    AddEntity(mMap);
+    AddEntity(mCar);
 }
 
 
@@ -177,6 +179,11 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 void StoryModeScene::OnActivate(SDL_Renderer *renderer)
 {
     Scene::OnActivate(renderer);
+}
+
+void StoryModeScene::Update(double deltaTime)
+{
+    mCar->SetPos(200, 200);
 }
 
 void StoryModeScene::Draw(SDL_Renderer *renderer)
@@ -259,4 +266,46 @@ void FranceMap::ProcessEvent(const SDL_Event &event)
             mOffsetY += event.motion.yrel;
         }
     }
+}
+
+std::string replaceStringAll(std::string str, const std::string& old, const std::string& new_s)
+{
+    if(!old.empty())
+    {
+        size_t pos = str.find(old);
+        while ((pos = str.find(old, pos)) != std::string::npos) {
+             str = str.replace(pos, old.length(), new_s);
+             pos += new_s.length();
+        }
+    }
+    return str;
+}
+
+
+void Car::OnCreate(SDL_Renderer *renderer)
+{
+    if (Assets::Get("deuxcv", mDeuxCvSVG))
+    {
+        std::string newCarColor = replaceStringAll(mDeuxCvSVG, "{{COLOR}}", "#a17321");
+
+        mTexture = GfxEngine::RenderSVG(renderer, newCarColor.data());
+        int w = 0;
+        int h = 0;
+        // get the width and height of the texture
+        if (SDL_QueryTexture(mTexture, NULL, NULL, &w, &h) == 0)
+        {
+            SetSize(w, h);
+        }
+    }
+    else
+    {
+        TLogError("[STORY] Cannot load image");
+    }
+}
+
+void Car::Draw(SDL_Renderer *renderer)
+{
+    SDL_SetTextureBlendMode(mTexture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureColorMod(mTexture, 255, 255, 255);
+    SDL_RenderCopyEx(renderer, mTexture, NULL, &GetRect(), GetAngle(), NULL, SDL_FLIP_NONE);
 }

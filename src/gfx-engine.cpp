@@ -8,6 +8,69 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define NANOSVG_IMPLEMENTATION
+#include "nanosvg.h"
+#define NANOSVGRAST_IMPLEMENTATION
+#include "nanosvgrast.h"
+
+/* Load a SVG type image from an SDL datasource */
+SDL_Texture *GfxEngine::LoadSVG(SDL_Renderer *renderer, const char *filename)
+{
+    std::string data = Util::FileToString(filename);
+    SDL_Texture * tex = GfxEngine::RenderSVG(renderer, data.data());
+
+    if (tex == nullptr)
+    {
+        tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 20, 20);
+    }
+
+    return tex;
+}
+
+SDL_Texture *GfxEngine::RenderSVG(SDL_Renderer *renderer, char *data)
+{
+    struct NSVGimage *image;
+    struct NSVGrasterizer *rasterizer;
+    SDL_Surface *surface = NULL;
+    float scale = 1.0f;
+
+    /* For now just use default units of pixels at 96 DPI */
+    image = nsvgParse(data, "px", 96.0f);
+
+    if ( !image ) {
+        //IMG_SetError("Couldn't parse SVG image");
+        return NULL;
+    }
+
+    rasterizer = nsvgCreateRasterizer();
+    if ( !rasterizer ) {
+       // IMG_SetError("Couldn't create SVG rasterizer");
+        nsvgDelete( image );
+        return NULL;
+    }
+
+    surface = SDL_CreateRGBSurface(SDL_SWSURFACE,
+                                   (int)(image->width * scale),
+                                   (int)(image->height * scale),
+                                   32,
+                                   0x000000FF,
+                                   0x0000FF00,
+                                   0x00FF0000,
+                                   0xFF000000);
+    if ( !surface ) {
+        nsvgDeleteRasterizer( rasterizer );
+        nsvgDelete( image );
+        return NULL;
+    }
+
+    nsvgRasterize(rasterizer, image, 0.0f, 0.0f, scale, (unsigned char *)surface->pixels, surface->w, surface->h, surface->pitch);
+    nsvgDeleteRasterizer( rasterizer );
+    nsvgDelete( image );
+
+    return SDL_CreateTextureFromSurface(renderer, surface);
+}
+
+
 
 SDL_Texture *GfxEngine::LoadImage(SDL_Renderer *renderer, const char* filename)
 {
@@ -60,6 +123,7 @@ void GfxEngine::SwitchSceneTo(uint32_t sceneId)
     mCurrentSceneId = sceneId;
     mSceneActivated = true;
 }
+
 
 Rect GfxSystem::GetWindowSize()
 {
