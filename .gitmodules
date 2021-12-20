@@ -7,3 +7,6 @@
 [submodule "libs/tarotclub-core"]
 	path = libs/tarotclub-core
 	url = git@github.com:tarotclub/tarotclub-core.git
+[submodule "libs/imgui-node-editor"]
+	path = libs/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor.git
