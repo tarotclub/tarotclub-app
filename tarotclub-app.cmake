@@ -1,6 +1,7 @@
 # TAROT_ROOT doit pointer vers la racine de tarotclub-app
 
 set(IMGUI_DIR ${TAROT_ROOT}/libs/imgui)
+set(IMGUI_NODE_EDITOR_DIR ${TAROT_ROOT}/libs/imgui-node-editor)
 
 set(ICL_ROOT ${TAROT_ROOT}/libs/icl)
 include(${ICL_ROOT}/icl.cmake)
@@ -44,8 +45,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/i-board-event.h
     ${TAROT_ROOT}/src/title-scene.cpp
     ${TAROT_ROOT}/src/title-scene.h
-    ${TAROT_ROOT}/src/story-mode-scene.cpp
-    ${TAROT_ROOT}/src/story-mode-scene.h
+
     ${TAROT_ROOT}/src/application.cpp
     ${TAROT_ROOT}/src/application.h
     ${TAROT_ROOT}/src/Embedded.cpp
@@ -59,6 +59,15 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/SDL2_rotozoom.h
     ${TAROT_ROOT}/src/assets.cpp
 
+    # SCENE STORY
+    ${TAROT_ROOT}/src/story-mode-scene.cpp
+    ${TAROT_ROOT}/src/story-mode-scene.h
+
+    # ----------------  SCENES  ----------------
+    ${TAROT_ROOT}/src/scenes/ai-editor-scene.cpp
+    ${TAROT_ROOT}/src/scenes/ai-editor-scene.h
+
+    # ----------------  IMGUI  ----------------
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
@@ -66,6 +75,10 @@ set(PROJECT_SOURCES
     ${IMGUI_DIR}/backends/imgui_impl_sdl.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 
+    ${IMGUI_NODE_EDITOR_DIR}/imgui_canvas.cpp
+    ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_api.cpp
+    ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor.cpp
+    ${IMGUI_NODE_EDITOR_DIR}/crude_json.cpp
 )
 
 set(TAROT_INCLUDES
@@ -74,8 +87,11 @@ set(TAROT_INCLUDES
     ${TAROT_ROOT}/libs/tarotclub-core
     ${TAROT_ROOT}/libs/asio
     ${TAROT_ROOT}/libs/nanosvg/src
+    ${TAROT_ROOT}/libs/imgui-node-editor
     ${TAROT_ROOT}/src
+    ${TAROT_ROOT}/src/scenes
 )
+
 
 #Creates C resources file from files in given directory
 function(create_resources dir output)

@@ -3,6 +3,7 @@
 #include "scenes.h"
 #include "System.h"
 #include "story-mode-scene.h"
+#include "ai-editor-scene.h"
 
 class LocalGameScene : public BoardScene
 {
@@ -75,6 +76,7 @@ int Application::Loop()
     mGfx.AddScene(std::make_shared<LocalGameScene>(mGfx, *this, mCtx, mNet), SCENE_LOCAL_GAME);
     mGfx.AddScene(std::make_shared<OnlineGameScene>(mGfx, *this, mCtx), SCENE_ONLINE_GAME);
     mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx, *this), SCENE_STORY_MODE);
+    mGfx.AddScene(std::make_shared<AiEditorScene>(mGfx, *this), SCENE_AI_EDITOR);
 
     mGfx.SwitchSceneTo(SCENE_TITLE); // First scene
 

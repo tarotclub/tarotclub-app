@@ -201,6 +201,11 @@ void TitleScene::DrawMainMenu()
         mMenu = MENU_ONLINE;
     }
 
+    if (ImGui::Button("AI Editor"))
+    {
+        SwitchToScene(SCENE_AI_EDITOR);
+    }
+
     if (ImGui::Button("Quit"))
     {
         SwitchToScene(SCENE_EXIT);
