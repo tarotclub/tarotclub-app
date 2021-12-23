@@ -2,12 +2,11 @@
 #define GFX_ENGINE_H
 
 // SDL
-#include "glad/glad.h"
 #include <SDL2/SDL.h>
 
 // Dear ImGui
 #include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl3.h"
+#include "imgui_impl_sdlrenderer.h"
 
 // C++
 #include <vector>
@@ -328,7 +327,6 @@ public:
     static SDL_Texture *RenderSVG(SDL_Renderer *renderer, char *data);
     static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);
 private:
-    SDL_GLContext gl_context;
     uint32_t mWidth = 1152;
     uint32_t mHeight = 648;
 

@@ -142,40 +142,6 @@ bool GfxEngine::Initialize()
         return -1;
     }
 
-    // set OpenGL attributes
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-
-    SDL_GL_SetAttribute(
-        SDL_GL_CONTEXT_PROFILE_MASK,
-        SDL_GL_CONTEXT_PROFILE_CORE
-        );
-
-    std::string glsl_version = "";
-#ifdef __APPLE__
-    // GL 3.2 Core + GLSL 150
-    glsl_version = "#version 150";
-    SDL_GL_SetAttribute( // required on Mac OS
-        SDL_GL_CONTEXT_FLAGS,
-        SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG
-        );
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-#elif __linux__
-    // GL 3.2 Core + GLSL 150
-    glsl_version = "#version 150";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#elif _WIN32
-    // GL 3.0 + GLSL 130
-    glsl_version = "#version 130";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-#endif
-
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_OPENGL
         | SDL_WINDOW_RESIZABLE
@@ -191,31 +157,6 @@ bool GfxEngine::Initialize()
         );
     // limit to which minimum size user can resize the window
     SDL_SetWindowMinimumSize(mWindow, mMinimumWidth, mMinimumHeight);
-
-    gl_context = SDL_GL_CreateContext(mWindow);
-    SDL_GL_MakeCurrent(mWindow, gl_context);
-
-    // enable VSync
-    SDL_GL_SetSwapInterval(1);
-
-//    SDL_SetRelativeMouseMode(SDL_TRUE);
-
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
-
-    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
-    {
-        std::cerr << "[ERROR] Couldn't initialize glad" << std::endl;
-    }
-    else
-    {
-        std::cout << "[INFO] glad initialized\n";
-    }
-
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glViewport(0, 0, mWidth, mHeight);
 
     // setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -303,23 +244,18 @@ bool GfxEngine::Initialize()
     colors[ImGuiCol_NavHighlight]           = colors[ImGuiCol_HeaderHovered];
     colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
 
-    // setup platform/renderer bindings
-    ImGui_ImplSDL2_InitForOpenGL(mWindow, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version.c_str());
-
     // Setup renderer    
     mRenderer =  SDL_CreateRenderer( mWindow, -1, SDL_RENDERER_ACCELERATED);
+
+    // setup platform/renderer bindings
+    ImGui_ImplSDL2_InitForSDLRenderer(mWindow);
+    ImGui_ImplSDLRenderer_Init(mRenderer);
 
     return mRenderer != nullptr;
 }
 
 void GfxEngine::Warmup()
 {
-    // colors are set in RGBA, but as float
-   ImVec4 background = ImVec4(35/255.0f, 35/255.0f, 35/255.0f, 1.00f);
-   glClearColor(background.x, background.y, background.z, background.w);
-
-
    currentTick = SDL_GetPerformanceCounter();
 
    for (auto &s : mScenes)
@@ -335,7 +271,6 @@ uint32_t GfxEngine::Process()
     uint32_t nextScene = 0;
 
     SDL_RenderClear(mRenderer);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -364,7 +299,6 @@ uint32_t GfxEngine::Process()
                 //           << "x"
                 //           << windowHeight
                 //           << std::endl;
-                glViewport(0, 0, mWidth, mHeight);
                 break;
             }
             break;
@@ -378,7 +312,7 @@ uint32_t GfxEngine::Process()
     }
 
     // start the Dear ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDLRenderer_NewFrame();
     ImGui_ImplSDL2_NewFrame(mWindow);
     ImGui::NewFrame();
 
@@ -410,24 +344,21 @@ uint32_t GfxEngine::Process()
 
     // rendering
     ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
     SDL_RenderPresent(mRenderer);
-    SDL_GL_SwapWindow(mWindow);
 
     return nextScene;
 }
 
-
 void GfxEngine::Close()
 {
-    SDL_DestroyRenderer(mRenderer);
-    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDLRenderer_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();  
-    SDL_GL_DeleteContext(gl_context);
+
+    SDL_DestroyRenderer(mRenderer);
     SDL_DestroyWindow(mWindow);
     SDL_Quit();
-
 }
 
 
