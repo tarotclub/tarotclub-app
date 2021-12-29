@@ -15,6 +15,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(TAROT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(OpenGL REQUIRED)
+find_package(SDL2 REQUIRED)
 
 include(${TAROT_ROOT}/tarotclub-app.cmake)
 
@@ -29,7 +30,12 @@ add_link_options(-static-libgcc -static-libstdc++)
 # SDL2
 #=========================================================================================================================
 set(SDL2_HEADERS
-    /usr/include/SDL2
+    /usr/local/include
+    /usr/local/include/SDL2
+)
+
+set(SDL2_LIBS_DIR
+    /usr/local/lib
 )
 
 set(SDL2_LIBS

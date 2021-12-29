@@ -18,7 +18,7 @@ AiEditorScene::AiEditorScene(GfxSystem &system, IBoardEvent &event)
 
 AiEditorScene::~AiEditorScene()
 {
-    ed::DestroyEditor(m_Context);
+    mView.OnStop();
 }
 
 
@@ -26,9 +26,7 @@ void AiEditorScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
 
-    ed::Config config;
-    config.SettingsFile = "Simple.json";
-    m_Context = ed::CreateEditor(&config);
+    mView.OnStart();
 }
 
 void AiEditorScene::OnActivate(SDL_Renderer *renderer)
@@ -39,6 +37,8 @@ void AiEditorScene::OnActivate(SDL_Renderer *renderer)
 void AiEditorScene::Update(double deltaTime)
 {
 //    mCar->SetPos(200, 200);
+
+    mView.OnFrame(deltaTime);
 }
 
 void AiEditorScene::Draw(SDL_Renderer *renderer)
@@ -52,28 +52,7 @@ void AiEditorScene::Draw(SDL_Renderer *renderer)
     ToolbarUI();
 
 
-    auto& io = ImGui::GetIO();
 
-    ImGui::Text("FPS: %.2f (%.2gms)", io.Framerate, io.Framerate ? 1000.0f / io.Framerate : 0.0f);
-
-    ImGui::Separator();
-
-    ed::SetCurrentEditor(m_Context);
-    ed::Begin("My Editor", ImVec2(0.0, 0.0f));
-    int uniqueId = 1;
-    // Start drawing nodes.
-    ed::BeginNode(uniqueId++);
-        ImGui::Text("Node A");
-        ed::BeginPin(uniqueId++, ed::PinKind::Input);
-            ImGui::Text("-> In");
-        ed::EndPin();
-        ImGui::SameLine();
-        ed::BeginPin(uniqueId++, ed::PinKind::Output);
-            ImGui::Text("Out ->");
-        ed::EndPin();
-    ed::EndNode();
-    ed::End();
-    ed::SetCurrentEditor(nullptr);
 
 
 //  //  filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);

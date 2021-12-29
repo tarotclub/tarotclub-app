@@ -11,6 +11,7 @@
 #include "board-hud.h"
 #include "DataBase.h"
 #include <imgui_node_editor.h>
+#include "ai-editor-view.h"
 
 namespace ed = ax::NodeEditor;
 
@@ -37,6 +38,8 @@ private:
     DataBase mDb;
 
     ed::EditorContext* m_Context = nullptr;
+
+    Example mView;
 
     void ToolbarUI();
 };

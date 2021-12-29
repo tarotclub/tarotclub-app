@@ -50,7 +50,6 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/application.h
     ${TAROT_ROOT}/src/Embedded.cpp
     ${TAROT_ROOT}/src/Embedded.h
-  #  ${TAROT_ROOT}/src/glad.c
     ${TAROT_ROOT}/src/http-client.h
     ${TAROT_ROOT}/src/stb_image.h
     ${TAROT_ROOT}/src/SDL2_gfxPrimitives.c
@@ -63,9 +62,11 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/story-mode-scene.cpp
     ${TAROT_ROOT}/src/story-mode-scene.h
 
-    # ----------------  SCENES  ----------------
+    # ----------------  AI-EDITOR SCENE  ----------------
     ${TAROT_ROOT}/src/scenes/ai-editor-scene.cpp
     ${TAROT_ROOT}/src/scenes/ai-editor-scene.h
+    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.cpp
+    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.h
 
     # ----------------  IMGUI  ----------------
     ${IMGUI_DIR}/imgui.cpp
@@ -74,7 +75,6 @@ set(PROJECT_SOURCES
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer.cpp
-   # ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 
     ${IMGUI_NODE_EDITOR_DIR}/imgui_canvas.cpp
     ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_api.cpp
@@ -88,9 +88,10 @@ set(TAROT_INCLUDES
     ${TAROT_ROOT}/libs/tarotclub-core
     ${TAROT_ROOT}/libs/asio
     ${TAROT_ROOT}/libs/nanosvg/src
-    ${TAROT_ROOT}/libs/imgui-node-editor
+    ${IMGUI_NODE_EDITOR_DIR}
     ${TAROT_ROOT}/src
     ${TAROT_ROOT}/src/scenes
+    ${TAROT_ROOT}/src/components/ai-editor
 )
 
 
