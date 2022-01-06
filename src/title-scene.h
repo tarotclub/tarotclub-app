@@ -39,10 +39,6 @@ private:
 
     Menus mMenu = MENU_MAIN;
 
-    asio::io_context io_context;
-    asio::ip::tcp::resolver resolver;
-    asio::ip::tcp::socket socket;
-    asio::ssl::context ssl_ctx;
     std::thread mHttpThread;
 
     void DrawInfoMenu();

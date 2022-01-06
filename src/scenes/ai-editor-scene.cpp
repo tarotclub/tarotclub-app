@@ -3,7 +3,7 @@
 #include "assets.h"
 #include "IconsMaterialDesign.h"
 #include "IconsFontAwesome5.h"
-
+#include "imgui_internal.h"
 
 AiEditorScene::AiEditorScene(GfxSystem &system, IBoardEvent &event)
     : Scene(system)
@@ -38,29 +38,67 @@ void AiEditorScene::Update(double deltaTime)
 {
 //    mCar->SetPos(200, 200);
 
-    mView.OnFrame(deltaTime);
+
 }
 
 void AiEditorScene::Draw(SDL_Renderer *renderer)
 {
-    SDL_SetRenderDrawColor(renderer,  0x09, 0x72, 0x00, 255);
-    // Clear the entire screen to our selected color.
-    SDL_RenderClear(renderer);
+    static bool resetDockspace = true;
 
-    Scene::Draw(renderer);
+    float menuHeight = 0;
 
-    ToolbarUI();
+    if(ImGui::BeginMainMenuBar())
+    {
+        menuHeight = ImGui::GetWindowSize().y;
+
+      if (ImGui::BeginMenu("Actions"))
+      {
+         if(ImGui::MenuItem("Quit"))
+         {
+             mEvent.ExitGame();
+         }
+         ImGui::EndMenu();
+       }
+
+       ImGui::EndMainMenuBar();
+    }
+
+
+    static ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
 
 
 
+    ImGui::DockSpaceOverViewport();
+    if (resetDockspace)
+    {
+        resetDockspace = false;
+
+        ImGuiID id = ImGui::GetID("Dock Main");
 
 
-//  //  filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
+        ImGui::DockBuilderRemoveNode(id);
+        ImGui::DockBuilderAddNode(id, ImGuiDockNodeFlags_CentralNode);//ImGuiDockNodeFlags_CentralNode | ImGuiDockNodeFlags_NoResize);
 
-//    vlineRGBA(renderer, city.x, 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
-//    hlineRGBA(renderer, 0, mMap->GetWZoomed(), city.y, 255, 0, 0, 255 );
+        ImGui::DockBuilderSetNodePos(id, { 0, menuHeight });
+        ImGui::DockBuilderSetNodeSize(id, { (float)GetSystem().GetWindowSize().w, (float)GetSystem().GetWindowSize().h - menuHeight});
 
-//    vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
+//        ImGuiID dockMainID = id;
+//        const ImGuiID dockLeft = ImGui::DockBuilderSplitNode(dockMainID, ImGuiDir_Left, 1.0, nullptr, nullptr);
+
+        ImGui::DockBuilderDockWindow("EditorView", id);
+
+
+        ImGui::DockBuilderFinish(id);
+    }
+
+    if (ImGui::Begin("EditorView", NULL, window_flags))
+    {
+        mView.OnFrame();
+    }
+    ImGui::End();
+
+
+
 }
 
 void AiEditorScene::ProcessEvent(const SDL_Event &event)

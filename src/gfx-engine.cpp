@@ -163,6 +163,7 @@ bool GfxEngine::Initialize()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
 
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     (void) io.Fonts->AddFontFromFileTTF( "assets/fonts/roboto.ttf", 20);
 
     ImFontConfig config;

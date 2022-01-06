@@ -117,9 +117,6 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     : Scene(system)
     , mApp(app)
     , mVersion(version)
-    , resolver(io_context)
-    , socket(io_context)
-    , ssl_ctx(asio::ssl::context::tls)
 {
     auto bg = std::make_shared<Background>(GetSystem());
     mLogo = std::make_shared<Logo>(GetSystem());
@@ -230,8 +227,10 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
         mHttpThread.join();
     }
 
+
+
     // give it some work, to prevent premature exit
-    mHttpThread = std::thread([&] {
+    mHttpThread = std::thread([login, password, this] {
         try
         {
             HttpRequest r;
@@ -249,34 +248,39 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
             r.method = "POST";
             r.query = "/api/v1/auth/signin";
 
-            io_context.restart();
-            asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
-            asio::ip::tcp::resolver::query query("tarotclub.fr", "443");
-            asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-            HttpClient c(io_context, ssl_ctx, iterator, r);
-            io_context.run();
+            HttpClient c("tarotclub.fr", "443", r);
+            HttpReply reply = c.run();
 
-//            std::cout << "EXIT" <<std::endl;
+            std::cout << "EXIT" <<std::endl;
 
             busy = false;
 
             JsonReader reader;
             JsonValue json;
 
-            if (reader.ParseString(json, c.get_reply().body))
+            if (reader.ParseString(json, reply.body))
             {
-                if (json.FindValue("success").GetBool())
+                if (json.HasValue("success"))
                 {
-                    TLogInfo("[WEB] Connected: " + json.ToString());
-                    Identity ident;
+                    if (json.FindValue("success").GetBool())
+                    {
+                        TLogInfo("[WEB] Connected: " + json.ToString());
+                        Identity ident;
 
-                    ident.username = json.FindValue("data:profile:username").GetString();
-                    ident.token = json.FindValue("data:profile:attr:token").GetString();
-                    mApp.SetLogged(ident);
-                    mConnectState = tribool::True;
+                        ident.username = json.FindValue("data:profile:username").GetString();
+                        ident.token = json.FindValue("data:profile:attr:token").GetString();
+                        mApp.SetLogged(ident);
+                        mConnectState = tribool::True;
+                    }
+                    else
+                    {
+                        TLogError("[ONLINE] Cannot connect: " + json.FindValue("message").GetString());
+                        mConnectState = tribool::False;
+                    }
                 }
                 else
                 {
+                    TLogError("[ONLINE] Malformed JSON reply");
                     mConnectState = tribool::False;
                 }
             }
@@ -285,18 +289,6 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
                 TLogError("[ONLINE] Cannot parse reply");
                 mConnectState = tribool::False;
             }
-
-
-//            std::string payload = c.get_data();
-
-//              if (c.is_timeout())
-//            {
-//                std::cout << "Timeout!" <<std::endl;
-//            }
-//            else
-//            {
-
-//            }
         }
         catch (std::exception& e)
         {

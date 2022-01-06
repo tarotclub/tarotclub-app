@@ -24,34 +24,40 @@ enum { max_length = 8*1024 };
 class HttpClient
 {
 public:
-  HttpClient(asio::io_context& io_context,
-      asio::ssl::context& context,
-      asio::ip::tcp::resolver::iterator endpoint_iterator,
-      const HttpRequest &req)
-    : io_ctx_(io_context)
-    , r(req)
-    , socket_(io_context, context)
+  HttpClient(const std::string &host, const std::string &port, const HttpRequest &req)
+    : resolver(io_context)
+    , ssl_ctx(asio::ssl::context::tls)
+    , socket_(io_context, ssl_ctx)
     , deadline_(io_context)
-  {
+    {
+        request_raw = HttpProtocol::GenerateRequest(req);
 
-    socket_.set_verify_mode(asio::ssl::verify_none);
-    start_connect(endpoint_iterator);
-    // Start the deadline actor. You will note that we're not setting any
-    // particular deadline here. Instead, the connect and input actors will
-    // update the deadline prior to each asynchronous operation.
-    deadline_.async_wait(std::bind(&HttpClient::check_deadline, this));
+        io_context.restart();
+        asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
+        asio::ip::tcp::resolver::query query(host, port);
+        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+
+        socket_.set_verify_mode(asio::ssl::verify_none);
+        start_connect(endpoint_iterator);
+        // Start the deadline actor. You will note that we're not setting any
+        // particular deadline here. Instead, the connect and input actors will
+        // update the deadline prior to each asynchronous operation.
+        deadline_.async_wait(std::bind(&HttpClient::check_deadline, this));
+    }
+
+  HttpReply run()
+  {
+      io_context.run();
+      return reply;
   }
+
 
   // This function terminates all the actors to shut down the connection. It
   // may be called by the user of the client class, or by the class itself in
   // response to graceful termination or an unrecoverable error.
     void stop()
     {
-        io_ctx_.stop();
-    }
-
-    HttpReply &get_reply() {
-        return reply;
+        io_context.stop();
     }
 
     bool is_timeout() const {
@@ -174,10 +180,8 @@ private:
         if (stopped_)
           return;
 
-        std::string request = HttpProtocol::GenerateRequest(r);
-
         // Start an asynchronous operation to send a heartbeat message.
-        asio::async_write(socket_, asio::buffer(request), std::bind(&HttpClient::handle_write, this, _1));
+        asio::async_write(socket_, asio::buffer(request_raw), std::bind(&HttpClient::handle_write, this, _1));
     }
 
     void handle_write(const std::error_code& error)
@@ -271,12 +275,16 @@ private:
         }
     }
 
-    asio::io_context& io_ctx_;
-    HttpRequest r;
-    HttpReply   reply;
-    bool stopped_ = false;
+    // ASIO STUFF
+    asio::io_context io_context;
+    asio::ip::tcp::resolver resolver;
+    asio::ssl::context ssl_ctx;
     asio::ip::tcp::resolver::results_type endpoints_;
     asio::ssl::stream<asio::ip::tcp::socket> socket_;
+
+    std::string request_raw;
+    HttpReply   reply;
+    bool stopped_ = false;
     std::string input_buffer_;
     asio::steady_timer deadline_;
     bool timeout_ = false;
