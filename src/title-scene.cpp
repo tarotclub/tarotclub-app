@@ -209,7 +209,11 @@ void TitleScene::DrawMainMenu()
     }
     ImGui::End();
 }
-
+#ifdef TAROT_DEBUG
+    static const std::string host = "127.0.0.1";
+#else
+    static const std::string host = "tarotclub.fr";
+#endif
 
 void TitleScene::ConnectToWebsite(const std::string &login, const std::string &password)
 {
@@ -227,8 +231,6 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
         mHttpThread.join();
     }
 
-
-
     // give it some work, to prevent premature exit
     mHttpThread = std::thread([login, password, this] {
         try
@@ -239,7 +241,7 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
             obj.AddValue("password", password);
 
             r.body = obj.ToString();
-            r.headers["Host"] = "tarotclub.fr";
+            r.headers["Host"] = host;
             r.headers["Accept"] = "*/*";
             r.headers["Connection"] = "close";
             r.headers["Content-Type"] = "application/json";
@@ -248,7 +250,7 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
             r.method = "POST";
             r.query = "/api/v1/auth/signin";
 
-            HttpClient c("tarotclub.fr", "443", r);
+            HttpClient c(host, "443", r);
             HttpReply reply = c.run();
 
             std::cout << "EXIT" <<std::endl;
