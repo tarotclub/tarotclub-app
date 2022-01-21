@@ -6,6 +6,7 @@
 #include <iostream>
 #include "asio.hpp"
 #include "asio/ssl.hpp"
+#include "http-client.h"
 #include <thread>
 
 class TitleScene : public Scene
@@ -39,12 +40,15 @@ private:
 
     Menus mMenu = MENU_MAIN;
 
+    HttpClient mWebsiteClient;
     std::thread mHttpThread;
 
     void DrawInfoMenu();
     void DrawMainMenu();
     void DrawOnlineMenu();
-    void ConnectToWebsite(const std::string &login, const std::string &password);
+    void ConnectToWebsite();
+    void RunHttp();
+    void Login(const std::string &login, const std::string &password);
 };
 
 

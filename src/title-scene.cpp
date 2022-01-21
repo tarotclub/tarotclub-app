@@ -6,6 +6,10 @@
 #include <string>
 #include "Log.h"
 
+#include <cstdlib>
+#include <iostream>
+#include <string>
+
 class Background : public Entity
 {
 
@@ -123,12 +127,15 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
 
     AddEntity(bg);
     AddEntity(mLogo);
+
+    mHttpThread = std::thread(&TitleScene::RunHttp, this);
 }
 
 TitleScene::~TitleScene()
 {
     if (mHttpThread.joinable())
     {
+        mWebsiteClient.stop();
         mHttpThread.join();
     }
 }
@@ -141,6 +148,7 @@ void TitleScene::OnCreate(SDL_Renderer *renderer)
 void TitleScene::OnActivate(SDL_Renderer *renderer)
 {
     Scene::OnActivate(renderer);
+    ConnectToWebsite();
 }
 
 void TitleScene::Draw(SDL_Renderer *renderer)
@@ -210,14 +218,23 @@ void TitleScene::DrawMainMenu()
     ImGui::End();
 }
 #ifdef TAROT_DEBUG
-    static const std::string host = "127.0.0.1";
+    static std::string host = "127.0.0.1";
 #else
     static const std::string host = "tarotclub.fr";
-#endif
+#endif    
 
-void TitleScene::ConnectToWebsite(const std::string &login, const std::string &password)
+
+
+void TitleScene::RunHttp()
+{
+    mWebsiteClient.Run();
+}
+
+void TitleScene::ConnectToWebsite()
 {
     static bool busy = false;
+
+    host = "tarotclub.fr";
 
     if (busy)
     {
@@ -226,36 +243,41 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
 
     busy = true;
 
-    if (mHttpThread.joinable())
-    {
-        mHttpThread.join();
-    }
-
-    // give it some work, to prevent premature exit
-    mHttpThread = std::thread([login, password, this] {
-        try
+    mWebsiteClient.StartHttp(host, "443", [this] (bool connected) {
+        if (!connected)
         {
-            HttpRequest r;
-            JsonObject obj;
-            obj.AddValue("login", login);
-            obj.AddValue("password", password);
-
-            r.body = obj.ToString();
-            r.headers["Host"] = host;
-            r.headers["Accept"] = "*/*";
-            r.headers["Connection"] = "close";
-            r.headers["Content-Type"] = "application/json";
-            r.headers["Content-Length"] = std::to_string(r.body.size());
-
-            r.method = "POST";
-            r.query = "/api/v1/auth/signin";
-
-            HttpClient c(host, "443", r);
-            HttpReply reply = c.run();
-
-            std::cout << "EXIT" <<std::endl;
-
+            ConnectToWebsite();
+        }
+        else
+        {
             busy = false;
+        }
+    });
+
+}
+
+void TitleScene::Login(const std::string &login, const std::string &password)
+{
+    HttpRequest r;
+    JsonObject obj;
+    obj.AddValue("login", login);
+    obj.AddValue("password", password);
+
+    r.body = obj.ToString();
+    r.headers["Host"] = host;
+    r.headers["Accept"] = "*/*";
+    r.headers["Connection"] = "close";
+    r.headers["Content-Type"] = "application/json";
+    r.headers["Content-Length"] = std::to_string(r.body.size());
+
+    r.method = "POST";
+    r.query = "/api/v1/auth/signin";
+
+    mWebsiteClient.Write(r, [this](bool success, const HttpReply &reply) {
+
+        if (success)
+        {
+            std::cout << "REPLY" <<std::endl;
 
             JsonReader reader;
             JsonValue json;
@@ -291,13 +313,13 @@ void TitleScene::ConnectToWebsite(const std::string &login, const std::string &p
                 TLogError("[ONLINE] Cannot parse reply");
                 mConnectState = tribool::False;
             }
+
         }
-        catch (std::exception& e)
+        else
         {
-            std::cerr << "Exception: " << e.what() << "\n";
-            busy = false;
-            mConnectState = tribool::False;
+            TLogError("[WEBSITE] Login failure");
         }
+
     });
 
 }
@@ -359,7 +381,7 @@ void TitleScene::DrawOnlineMenu()
 
         if (ImGui::Button("Connect"))
         {
-            ConnectToWebsite(login, password);
+            Login(login, password);
         }
 
     }
