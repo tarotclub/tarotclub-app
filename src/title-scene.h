@@ -4,10 +4,11 @@
 #include "gfx-engine.h"
 #include "i-application.h"
 #include <iostream>
-#include "asio.hpp"
-#include "asio/ssl.hpp"
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include "http-client.h"
 #include <thread>
+#include "ThreadQueue.h"
 
 class TitleScene : public Scene
 {
@@ -40,15 +41,18 @@ private:
 
     Menus mMenu = MENU_MAIN;
 
-    HttpClient mWebsiteClient;
+    HttpClient mHttpClient;
+    ThreadQueue<HttpClient::Request> mHttpQueue;
+
     std::thread mHttpThread;
 
     void DrawInfoMenu();
     void DrawMainMenu();
     void DrawOnlineMenu();
-    void ConnectToWebsite();
+
     void RunHttp();
     void Login(const std::string &login, const std::string &password);
+    void HandleHttpReply();
 };
 
 

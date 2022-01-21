@@ -86,7 +86,7 @@ set(TAROT_INCLUDES
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${TAROT_ROOT}/libs/tarotclub-core
-    ${TAROT_ROOT}/libs/asio
+#    ${TAROT_ROOT}/libs/asio
     ${TAROT_ROOT}/libs/nanosvg/src
     ${IMGUI_NODE_EDITOR_DIR}
     ${TAROT_ROOT}/src

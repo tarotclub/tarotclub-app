@@ -52,7 +52,7 @@ set(CMAKE_INSTALL_RPATH "\$ORIGIN/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${TAROT_CORE_SRCS})
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBS} OpenGL::GL  pthread icl ssl crypto dl)
+target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} OpenGL::GL  pthread icl ssl crypto dl)
 target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_HEADERS} ${TAROT_INCLUDES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:TAROT_DEBUG>")

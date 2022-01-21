@@ -135,8 +135,11 @@ TitleScene::~TitleScene()
 {
     if (mHttpThread.joinable())
     {
-        mWebsiteClient.stop();
-        mHttpThread.join();
+        mHttpQueue.Push(HttpClient::Request(true));
+        if (mHttpThread.joinable())
+        {
+            mHttpThread.join();
+        }
     }
 }
 
@@ -148,7 +151,6 @@ void TitleScene::OnCreate(SDL_Renderer *renderer)
 void TitleScene::OnActivate(SDL_Renderer *renderer)
 {
     Scene::OnActivate(renderer);
-    ConnectToWebsite();
 }
 
 void TitleScene::Draw(SDL_Renderer *renderer)
@@ -227,52 +229,92 @@ void TitleScene::DrawMainMenu()
 
 void TitleScene::RunHttp()
 {
-    mWebsiteClient.Run();
+    bool quit = false;
+    HttpClient::Request req;
+    while(!quit)
+    {
+        if (mHttpQueue.TryPop(req))
+        {
+            if (!req.quit)
+            {
+                std::string response = mHttpClient.ExecuteAsync(req);
+
+                JsonReader reader;
+                JsonValue json;
+
+                if (reader.ParseString(json, response))
+                {
+                    if (json.HasValue("success"))
+                    {
+                        if (json.FindValue("success").GetBool())
+                        {
+                            TLogInfo("[WEB] Connected: " + json.ToString());
+                            Identity ident;
+
+                            ident.username = json.FindValue("data:profile:username").GetString();
+                            ident.token = json.FindValue("data:profile:attr:token").GetString();
+                            mApp.SetLogged(ident);
+                            mConnectState = tribool::True;
+                        }
+                        else
+                        {
+                            TLogError("[ONLINE] Cannot connect: " + json.FindValue("message").GetString());
+                            mConnectState = tribool::False;
+                        }
+                    }
+                    else
+                    {
+                        TLogError("[ONLINE] Malformed JSON reply");
+                        mConnectState = tribool::False;
+                    }
+                }
+                else
+                {
+                    TLogError("[ONLINE] Cannot parse reply");
+                    mConnectState = tribool::False;
+                }
+            }
+            quit = req.quit;
+        }
+    }
 }
 
-void TitleScene::ConnectToWebsite()
+void TitleScene::HandleHttpReply()
 {
-    static bool busy = false;
 
-    host = "tarotclub.fr";
-
-    if (busy)
-    {
-        return;
-    }
-
-    busy = true;
-
-    mWebsiteClient.StartHttp(host, "443", [this] (bool connected) {
-        if (!connected)
-        {
-            ConnectToWebsite();
-        }
-        else
-        {
-            busy = false;
-        }
-    });
 
 }
 
 void TitleScene::Login(const std::string &login, const std::string &password)
 {
-    HttpRequest r;
     JsonObject obj;
     obj.AddValue("login", login);
     obj.AddValue("password", password);
 
-    r.body = obj.ToString();
-    r.headers["Host"] = host;
-    r.headers["Accept"] = "*/*";
-    r.headers["Connection"] = "close";
-    r.headers["Content-Type"] = "application/json";
-    r.headers["Content-Length"] = std::to_string(r.body.size());
+//    HttpRequest r;
 
-    r.method = "POST";
-    r.query = "/api/v1/auth/signin";
 
+//    r.body = obj.ToString();
+//    r.headers["Host"] = host;
+//    r.headers["Accept"] = "*/*";
+//    r.headers["Connection"] = "close";
+//    r.headers["Content-Type"] = "application/json";
+//    r.headers["Content-Length"] = std::to_string(r.body.size());
+
+//    r.method = "POST";
+//    r.query = "/api/v1/auth/signin";
+
+
+    HttpClient::Request req;
+
+    req.body = obj.ToString();
+    req.host = "tarotclub.fr";
+    req.port = "443";
+    req.target = "/api/v1/auth/signin";
+
+    mHttpQueue.Push(req);
+
+/*
     mWebsiteClient.Write(r, [this](bool success, const HttpReply &reply) {
 
         if (success)
@@ -321,6 +363,7 @@ void TitleScene::Login(const std::string &login, const std::string &password)
         }
 
     });
+    */
 
 }
 
