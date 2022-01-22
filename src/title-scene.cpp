@@ -133,19 +133,23 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
 
 TitleScene::~TitleScene()
 {
+    mHttpQueue.Push(HttpClient::Request(true));
     if (mHttpThread.joinable())
     {
-        mHttpQueue.Push(HttpClient::Request(true));
-        if (mHttpThread.joinable())
-        {
-            mHttpThread.join();
-        }
+        mHttpThread.join();
+    }
+
+    mWsClient.Close();
+    if (mWsThread.joinable())
+    {
+        mWsThread.join();
     }
 }
 
 void TitleScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
+    mWsThread = std::thread(&TitleScene::RunWebSocket, this);
 }
 
 void TitleScene::OnActivate(SDL_Renderer *renderer)
@@ -277,6 +281,11 @@ void TitleScene::RunHttp()
             quit = req.quit;
         }
     }
+}
+
+void TitleScene::RunWebSocket()
+{
+    mWsClient.Run("tarotclub.fr", "9998");
 }
 
 void TitleScene::HandleHttpReply()

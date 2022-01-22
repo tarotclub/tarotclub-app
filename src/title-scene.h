@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include "http-client.h"
+#include "websocket-client.h"
 #include <thread>
 #include "ThreadQueue.h"
 
@@ -43,14 +44,17 @@ private:
 
     HttpClient mHttpClient;
     ThreadQueue<HttpClient::Request> mHttpQueue;
-
     std::thread mHttpThread;
+
+    WebSocketClient mWsClient;
+    std::thread mWsThread;
 
     void DrawInfoMenu();
     void DrawMainMenu();
     void DrawOnlineMenu();
 
     void RunHttp();
+    void RunWebSocket();
     void Login(const std::string &login, const std::string &password);
     void HandleHttpReply();
 };

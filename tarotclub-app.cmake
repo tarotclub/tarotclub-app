@@ -51,6 +51,8 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/Embedded.cpp
     ${TAROT_ROOT}/src/Embedded.h
     ${TAROT_ROOT}/src/http-client.h
+    ${TAROT_ROOT}/src/websocket-client.h
+    ${TAROT_ROOT}/src/websocket-client.cpp
     ${TAROT_ROOT}/src/stb_image.h
     ${TAROT_ROOT}/src/SDL2_gfxPrimitives.c
     ${TAROT_ROOT}/src/SDL2_gfxPrimitives.h
