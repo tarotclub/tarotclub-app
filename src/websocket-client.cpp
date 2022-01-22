@@ -110,6 +110,8 @@ void WebSocketClient::session::on_ssl_handshake(boost::beast::error_code ec)
         return on_failure(ec, STATE_SSL);
     }
 
+    still_connected();
+
     // Turn off the timeout on the tcp_stream, because
     // the websocket stream has its own timeout system.
     boost::beast::get_lowest_layer(ws_).expires_never();
@@ -137,6 +139,8 @@ void WebSocketClient::session::on_handshake(boost::beast::error_code ec)
         return on_failure(ec, STATE_WS_HANDSHAKE);
     }
 
+    still_connected();
+
     // Read a message into our buffer
     ws_.async_read(buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
 }
@@ -149,6 +153,7 @@ void WebSocketClient::session::on_write(boost::beast::error_code ec, std::size_t
     {
         return on_failure(ec, STATE_WRITE);
     }
+    still_connected();
 }
 
 void WebSocketClient::session::on_read(boost::beast::error_code ec, std::size_t bytes_transferred)
@@ -190,6 +195,7 @@ void WebSocketClient::session::on_failure(boost::beast::error_code ec, State err
 void WebSocketClient::session::still_connected()
 {
     mState = STATE_NO_ERROR;
+    mConnected = true;
 }
 
 WebSocketClient::WebSocketClient(IReadHandler &handler)
@@ -272,5 +278,5 @@ WebSocketClient::State WebSocketClient::GetState()
         err = STATE_NO_SESSION;
     }
 
-    return STATE_NO_ERROR;
+    return err;
 }
