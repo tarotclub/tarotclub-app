@@ -28,9 +28,6 @@ public:
         std::string response;
         try
         {
-            // The io_context is required for all I/O
-            boost::asio::io_context ioc;
-
             // The SSL context is required, and holds certificates
             boost::asio::ssl::context ctx{boost::asio::ssl::context::tlsv12_client};
 
@@ -67,6 +64,7 @@ public:
 
     void Close()
     {
+        ioc.stop();
         if (mSession)
         {
             mSession->Close();
@@ -74,6 +72,10 @@ public:
     }
 
 private:
+
+    // The io_context is required for all I/O
+    boost::asio::io_context ioc;
+
 
     // Sends a WebSocket message and prints the response
     class session : public std::enable_shared_from_this<session>
