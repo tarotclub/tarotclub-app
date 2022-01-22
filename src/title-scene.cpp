@@ -121,6 +121,7 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     : Scene(system)
     , mApp(app)
     , mVersion(version)
+    , mWsClient(*this)
 {
     auto bg = std::make_shared<Background>(GetSystem());
     mLogo = std::make_shared<Logo>(GetSystem());
@@ -168,6 +169,33 @@ void TitleScene::Draw(SDL_Renderer *renderer)
     else if (mMenu == MENU_ONLINE)
     {
         DrawOnlineMenu();
+    }
+}
+
+void TitleScene::OnWsData(const std::string &data)
+{
+    JsonReader reader;
+    JsonValue json;
+
+    if (reader.ParseString(json, data))
+    {
+        if (json.HasValue("event"))
+        {
+            std::string event = json.FindValue("event").GetString();
+            if (event == "servers")
+            {
+                // On reçoit la liste des serveurs
+                JsonArray serversList = json.FindValue("data").GetArray();
+            }
+        }
+        else
+        {
+            TLogError("[WEBSOCKET] No event field in JSON");
+        }
+    }
+    else
+    {
+        TLogError("[WEBSOCKET] Failed to parse event");
     }
 }
 
@@ -285,7 +313,26 @@ void TitleScene::RunHttp()
 
 void TitleScene::RunWebSocket()
 {
-    mWsClient.Run("tarotclub.fr", "9998");
+    bool quit = false;
+    while(!quit)
+    {
+        mWsClient.Run("tarotclub.fr", "9998");
+//    mWsClient.Run("fjdskqshkdsqgldl.fr", "9998");
+        // Ah on a quitté, pourquoi ?
+        WebSocketClient::State state = mWsClient.GetState();
+        if (state == WebSocketClient::STATE_NO_ERROR)
+        {
+            // pas d'erreur particulière, on quitte pour de bon
+            quit = true;
+        }
+        else
+        {
+            // Quelque chose s'est mal passé, on se reconnecte au serveur
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            TLogError("[WEBSOCKET] Error code: " + std::to_string(state) + " restarting connection...");
+        }
+    }
+
 }
 
 void TitleScene::HandleHttpReply()
@@ -300,20 +347,6 @@ void TitleScene::Login(const std::string &login, const std::string &password)
     obj.AddValue("login", login);
     obj.AddValue("password", password);
 
-//    HttpRequest r;
-
-
-//    r.body = obj.ToString();
-//    r.headers["Host"] = host;
-//    r.headers["Accept"] = "*/*";
-//    r.headers["Connection"] = "close";
-//    r.headers["Content-Type"] = "application/json";
-//    r.headers["Content-Length"] = std::to_string(r.body.size());
-
-//    r.method = "POST";
-//    r.query = "/api/v1/auth/signin";
-
-
     HttpClient::Request req;
 
     req.body = obj.ToString();
@@ -322,58 +355,6 @@ void TitleScene::Login(const std::string &login, const std::string &password)
     req.target = "/api/v1/auth/signin";
 
     mHttpQueue.Push(req);
-
-/*
-    mWebsiteClient.Write(r, [this](bool success, const HttpReply &reply) {
-
-        if (success)
-        {
-            std::cout << "REPLY" <<std::endl;
-
-            JsonReader reader;
-            JsonValue json;
-
-            if (reader.ParseString(json, reply.body))
-            {
-                if (json.HasValue("success"))
-                {
-                    if (json.FindValue("success").GetBool())
-                    {
-                        TLogInfo("[WEB] Connected: " + json.ToString());
-                        Identity ident;
-
-                        ident.username = json.FindValue("data:profile:username").GetString();
-                        ident.token = json.FindValue("data:profile:attr:token").GetString();
-                        mApp.SetLogged(ident);
-                        mConnectState = tribool::True;
-                    }
-                    else
-                    {
-                        TLogError("[ONLINE] Cannot connect: " + json.FindValue("message").GetString());
-                        mConnectState = tribool::False;
-                    }
-                }
-                else
-                {
-                    TLogError("[ONLINE] Malformed JSON reply");
-                    mConnectState = tribool::False;
-                }
-            }
-            else
-            {
-                TLogError("[ONLINE] Cannot parse reply");
-                mConnectState = tribool::False;
-            }
-
-        }
-        else
-        {
-            TLogError("[WEBSITE] Login failure");
-        }
-
-    });
-    */
-
 }
 
 void TitleScene::DrawOnlineMenu()

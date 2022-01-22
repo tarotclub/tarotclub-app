@@ -10,17 +10,16 @@
 #include "websocket-client.h"
 #include <thread>
 #include "ThreadQueue.h"
+#include <JsonValue.h>
 
-class TitleScene : public Scene
+class TitleScene : public Scene, public WebSocketClient::IReadHandler
 {
 public:
     TitleScene(GfxSystem &system, IApplication &app, const std::string &version);
     ~TitleScene();
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
-
     virtual void OnActivate(SDL_Renderer *renderer) override;
-
     virtual void Draw(SDL_Renderer *renderer) override;
 
 private:
@@ -48,6 +47,9 @@ private:
 
     WebSocketClient mWsClient;
     std::thread mWsThread;
+
+    // From WebSocketClient::IReadHandler
+    virtual void OnWsData(const std::string &data) override;
 
     void DrawInfoMenu();
     void DrawMainMenu();

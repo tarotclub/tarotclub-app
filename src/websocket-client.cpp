@@ -16,32 +16,34 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <sstream>
 #include "openssl/ssl3.h"
 
-static void fail(boost::beast::error_code ec, const char *what)
-{
-    std::cerr << what << ": " << ec.message() << "\n";
-}
-
-WebSocketClient::session::session(boost::asio::io_context &ioc, boost::asio::ssl::context &ctx)
-    : resolver_(boost::asio::make_strand(ioc))
+WebSocketClient::session::session(boost::asio::io_context &ioc, boost::asio::ssl::context &ctx, IReadHandler &handler)
+    : mReadHandler(handler)
+    , resolver_(boost::asio::make_strand(ioc))
     , ws_(boost::asio::make_strand(ioc), ctx)
 {
 }
 
-void WebSocketClient::session::run(const std::string &host, const std::string &port)
+void WebSocketClient::session::Run(const std::string &host, const std::string &port)
 {
     // Save these for later
     host_ = host;
+    port_ = port;
 
     // Look up the domain name
-    resolver_.async_resolve(
-                host,
-                port,
-                boost::beast::bind_front_handler(
-                    &session::on_resolve,
-                    shared_from_this()));
+    resolver_.async_resolve(host, port, boost::beast::bind_front_handler(&session::on_resolve, shared_from_this()));
+}
+
+void WebSocketClient::session::Close()
+{
+    // Close the WebSocket connection
+    ws_.async_close(boost::beast::websocket::close_code::normal,
+                    boost::beast::bind_front_handler(
+                        &session::on_close,
+                        shared_from_this()));
+    mConnected = true;
 }
 
 void WebSocketClient::session::Send(const std::string &message)
@@ -57,7 +59,9 @@ void WebSocketClient::session::Send(const std::string &message)
 void WebSocketClient::session::on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results)
 {
     if(ec)
-        return fail(ec, "resolve");
+    {
+        return on_failure(ec, STATE_RESOLVE);
+    }
 
     // Set a timeout on the operation
     boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
@@ -73,7 +77,9 @@ void WebSocketClient::session::on_resolve(boost::beast::error_code ec, boost::as
 void WebSocketClient::session::on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type ep)
 {
     if(ec)
-        return fail(ec, "connect");
+    {
+        return on_failure(ec, STATE_CONNECT);
+    }
 
     // Set a timeout on the operation
     boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
@@ -85,7 +91,7 @@ void WebSocketClient::session::on_connect(boost::beast::error_code ec, boost::as
     {
         ec = boost::beast::error_code(static_cast<int>(::ERR_get_error()),
                                       boost::asio::error::get_ssl_category());
-        return fail(ec, "connect");
+        return on_failure(ec, STATE_CONNECT);
     }
 
     // Update the host_ string. This will provide the value of the
@@ -94,26 +100,22 @@ void WebSocketClient::session::on_connect(boost::beast::error_code ec, boost::as
     host_ += ':' + std::to_string(ep.port());
 
     // Perform the SSL handshake
-    ws_.next_layer().async_handshake(
-                boost::asio::ssl::stream_base::client,
-                boost::beast::bind_front_handler(
-                    &session::on_ssl_handshake,
-                    shared_from_this()));
+    ws_.next_layer().async_handshake(boost::asio::ssl::stream_base::client, boost::beast::bind_front_handler(&session::on_ssl_handshake, shared_from_this()));
 }
 
 void WebSocketClient::session::on_ssl_handshake(boost::beast::error_code ec)
 {
     if(ec)
-        return fail(ec, "ssl_handshake");
+    {
+        return on_failure(ec, STATE_SSL);
+    }
 
     // Turn off the timeout on the tcp_stream, because
     // the websocket stream has its own timeout system.
     boost::beast::get_lowest_layer(ws_).expires_never();
 
     // Set suggested timeout settings for the websocket
-    ws_.set_option(
-                boost::beast::websocket::stream_base::timeout::suggested(
-                    boost::beast::role_type::client));
+    ws_.set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::client));
 
     // Set a decorator to change the User-Agent of the handshake
     ws_.set_option(boost::beast::websocket::stream_base::decorator(
@@ -125,23 +127,18 @@ void WebSocketClient::session::on_ssl_handshake(boost::beast::error_code ec)
                    }));
 
     // Perform the websocket handshake
-    ws_.async_handshake(host_, "/",
-                        boost::beast::bind_front_handler(
-                            &session::on_handshake,
-                            shared_from_this()));
+    ws_.async_handshake(host_, "/", boost::beast::bind_front_handler(&session::on_handshake, shared_from_this()));
 }
 
 void WebSocketClient::session::on_handshake(boost::beast::error_code ec)
 {
     if(ec)
-        return fail(ec, "handshake");
+    {
+        return on_failure(ec, STATE_WS_HANDSHAKE);
+    }
 
     // Read a message into our buffer
-    ws_.async_read(
-                buffer_,
-                boost::beast::bind_front_handler(
-                    &session::on_read,
-                    shared_from_this()));
+    ws_.async_read(buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
 }
 
 void WebSocketClient::session::on_write(boost::beast::error_code ec, std::size_t bytes_transferred)
@@ -149,33 +146,131 @@ void WebSocketClient::session::on_write(boost::beast::error_code ec, std::size_t
     boost::ignore_unused(bytes_transferred);
 
     if(ec)
-        return fail(ec, "write");
+    {
+        return on_failure(ec, STATE_WRITE);
+    }
 }
 
 void WebSocketClient::session::on_read(boost::beast::error_code ec, std::size_t bytes_transferred)
 {
+    if(ec)
+    {
+        mState = STATE_READ;
+        return on_failure(ec, STATE_READ);
+    }
+
+    still_connected();
+
     boost::ignore_unused(bytes_transferred);
 
     // The make_printable() function helps print a ConstBufferSequence
-    std::cout << boost::beast::make_printable(buffer_.data()) << std::endl;
+//    std::cout << boost::beast::make_printable(buffer_.data()) << std::endl;
+    std::stringstream ss;
+    ss << boost::beast::make_printable(buffer_.data());
+    mReadHandler.OnWsData(ss.str());
     buffer_.clear();
 
-    ws_.async_read(
-                buffer_,
-                boost::beast::bind_front_handler(
-                    &session::on_read,
-                    shared_from_this()));
-
-    if(ec)
-        return fail(ec, "read");
+    ws_.async_read(buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
 }
 
 void WebSocketClient::session::on_close(boost::beast::error_code ec)
 {
     if(ec)
-        return fail(ec, "close");
+    {
+        return on_failure(ec, STATE_CLOSE);
+    }
+}
 
-    // If we get here then the connection is closed gracefully
+void WebSocketClient::session::on_failure(boost::beast::error_code ec, State error)
+{
+    mConnected = false;
+    mState = error;
+}
 
+void WebSocketClient::session::still_connected()
+{
+    mState = STATE_NO_ERROR;
+}
 
+WebSocketClient::WebSocketClient(IReadHandler &handler)
+    : mReadHandler(handler)
+{
+
+}
+
+std::string WebSocketClient::Run(const std::string &host, const std::string &port)
+{
+    std::string response;
+    try
+    {
+        // The SSL context is required, and holds certificates
+        boost::asio::ssl::context ctx{boost::asio::ssl::context::tlsv12_client};
+
+        // Verify the remote server's certificate
+        ctx.set_verify_mode(boost::asio::ssl::verify_none);
+
+        // Launch the asynchronous operation
+        // The session is constructed with a strand to
+        // ensure that handlers do not execute concurrently.
+        mSession = std::make_shared<session>(ioc, ctx, mReadHandler);
+
+        mSession->Run(host, port);
+
+        // Run the I/O service. The call will return when
+        // the get operation is complete.
+        ioc.run();
+
+        std::cout << "[WEBSOCKET] Exit loop" << std::endl;
+    }
+    catch(std::exception const& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return response;
+}
+
+void WebSocketClient::Send(const std::string &message)
+{
+    if (mSession)
+    {
+        mSession->Send(message);
+    }
+}
+
+void WebSocketClient::Close()
+{
+    ioc.stop();
+    if (mSession)
+    {
+        mSession->Close();
+    }
+}
+
+bool WebSocketClient::IsConnected()
+{
+    bool connected = false;
+
+    if (mSession)
+    {
+        connected = mSession->IsConnected();
+    }
+
+    return connected;
+}
+
+WebSocketClient::State WebSocketClient::GetState()
+{
+    State err = STATE_NO_ERROR;
+
+    if (mSession)
+    {
+        err = mSession->GetState();
+    }
+    else
+    {
+        err = STATE_NO_SESSION;
+    }
+
+    return STATE_NO_ERROR;
 }

@@ -32,7 +32,7 @@ public:
 
     // From IApplication
     bool IsLogged() override { return mLogged; }
-    void SetLogged(const Identity &ident);
+    void SetLogged(const Identity &ident) override;
 
 private:
     enum GameType {

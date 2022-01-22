@@ -23,117 +23,77 @@
 class WebSocketClient
 {
 public:
-    std::string Run(const std::string &host, const std::string &port)
+    class IReadHandler
     {
-        std::string response;
-        try
-        {
-            // The SSL context is required, and holds certificates
-            boost::asio::ssl::context ctx{boost::asio::ssl::context::tlsv12_client};
+    public:
+        ~IReadHandler() {}
+        virtual void OnWsData(const std::string &data) = 0;
+    };
 
-            // Verify the remote server's certificate
-            ctx.set_verify_mode(boost::asio::ssl::verify_none);
+    enum State {
+        STATE_NO_ERROR,
+        STATE_NO_SESSION,
+        STATE_CONNECT,
+        STATE_READ,
+        STATE_RESOLVE,
+        STATE_WRITE,
+        STATE_SSL,
+        STATE_WS_HANDSHAKE,
+        STATE_CLOSE,
+        STATE_UNKNOWN,
+    };
 
-            // Launch the asynchronous operation
-            // The session is constructed with a strand to
-            // ensure that handlers do not execute concurrently.
-            mSession = std::make_shared<session>(ioc, ctx);
+    WebSocketClient(IReadHandler &handler);
 
-            mSession->run(host, port);
-
-            // Run the I/O service. The call will return when
-            // the get operation is complete.
-            ioc.run();
-
-        }
-        catch(std::exception const& e)
-        {
-            std::cerr << "Error: " << e.what() << std::endl;
-        }
-
-        return response;
-    }
-
-    void Send(const std::string &message)
-    {
-        if (mSession)
-        {
-            mSession->Send(message);
-        }
-    }
-
-    void Close()
-    {
-        ioc.stop();
-        if (mSession)
-        {
-            mSession->Close();
-        }
-    }
-
+    std::string Run(const std::string &host, const std::string &port);
+    void Send(const std::string &message);
+    void Close();
+    bool IsConnected();
+    State GetState();
 private:
+    IReadHandler &mReadHandler;
 
     // The io_context is required for all I/O
     boost::asio::io_context ioc;
-
 
     // Sends a WebSocket message and prints the response
     class session : public std::enable_shared_from_this<session>
     {
         boost::asio::ip::tcp::resolver resolver_;
-        boost::beast::websocket::stream<
-            boost::beast::ssl_stream<boost::beast::tcp_stream>> ws_;
+        boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> ws_;
         boost::beast::flat_buffer buffer_;
         std::string host_;
+        std::string port_;
 
     public:
         // Resolver and socket require an io_context
-        explicit
-        session(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx);
-
+        explicit session(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, IReadHandler &handler);
         // Start the asynchronous operation
-        void
-        run(const std::string &host, const std::string &port);
-
-        void Close()
-        {
-            // Close the WebSocket connection
-            ws_.async_close(boost::beast::websocket::close_code::normal,
-                boost::beast::bind_front_handler(
-                    &session::on_close,
-                    shared_from_this()));
-        }
-
+        void Run(const std::string &host, const std::string &port);
+        void Close();
         void Send(const std::string &message);
+        bool IsConnected() const { return mConnected; }
+        State GetState() { return mState; }
 
+    private:
+        IReadHandler &mReadHandler;
+        bool mConnected = false;
+        State mState = STATE_NO_ERROR;
 
-        void
-        on_resolve(
-            boost::beast::error_code ec,
-            boost::asio::ip::tcp::resolver::results_type results);
-
-        void
-        on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type ep);
-
-        void
-        on_ssl_handshake(boost::beast::error_code ec);
-
-        void
-        on_handshake(boost::beast::error_code ec);
-
-        void
-        on_write(
-            boost::beast::error_code ec,
-            std::size_t bytes_transferred);
-
+        void on_resolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
+        void on_connect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type ep);
+        void on_ssl_handshake(boost::beast::error_code ec);
+        void on_handshake(boost::beast::error_code ec);
+        void on_write(boost::beast::error_code ec, std::size_t bytes_transferred);
         void on_read(boost::beast::error_code ec, std::size_t bytes_transferred);
+        void on_close(boost::beast::error_code ec);
+        void on_failure(boost::beast::error_code ec, State error);
+        void still_connected();
 
-
-        void
-        on_close(boost::beast::error_code ec);
     };
 
     std::shared_ptr<session> mSession;
+
 };
 
 #endif // WEBSOCKET_CLIENT_H
