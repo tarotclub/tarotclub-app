@@ -43,8 +43,6 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/board-hud.cpp
     ${TAROT_ROOT}/src/board-hud.h
     ${TAROT_ROOT}/src/i-board-event.h
-    ${TAROT_ROOT}/src/title-scene.cpp
-    ${TAROT_ROOT}/src/title-scene.h
 
     ${TAROT_ROOT}/src/application.cpp
     ${TAROT_ROOT}/src/application.h
@@ -60,7 +58,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/SDL2_rotozoom.h
     ${TAROT_ROOT}/src/assets.cpp
 
-    # SCENE STORY
+    # ----------------  SCENE STORY  ----------------
     ${TAROT_ROOT}/src/story-mode-scene.cpp
     ${TAROT_ROOT}/src/story-mode-scene.h
 
@@ -69,6 +67,10 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/scenes/ai-editor-scene.h
     ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.cpp
     ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.h
+
+    # ----------------  TITLE SCENE  ----------------
+    ${TAROT_ROOT}/src/scenes/title-scene.cpp
+    ${TAROT_ROOT}/src/scenes/title-scene.h
 
     # ----------------  IMGUI  ----------------
     ${IMGUI_DIR}/imgui.cpp

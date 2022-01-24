@@ -252,9 +252,9 @@ void TitleScene::DrawMainMenu()
     ImGui::End();
 }
 #ifdef TAROT_DEBUG
-    static std::string host = "127.0.0.1";
+    static const std::string TAROTCLUB_HOST = "127.0.0.1";
 #else
-    static const std::string host = "tarotclub.fr";
+    static const std::string TAROTCLUB_HOST = "tarotclub.fr";
 #endif    
 
 
@@ -316,7 +316,7 @@ void TitleScene::RunWebSocket()
     bool quit = false;
     while(!quit)
     {
-        mWsClient.Run("tarotclub.fr", "9998");
+        mWsClient.Run(TAROTCLUB_HOST, "9998");
 //    mWsClient.Run("fjdskqshkdsqgldl.fr", "9998");
         // Ah on a quitté, pourquoi ?
         WebSocketClient::State state = mWsClient.GetState();
@@ -350,7 +350,7 @@ void TitleScene::Login(const std::string &login, const std::string &password)
     HttpClient::Request req;
 
     req.body = obj.ToString();
-    req.host = "tarotclub.fr";
+    req.host = TAROTCLUB_HOST;
     req.port = "443";
     req.target = "/api/v1/auth/signin";
 
@@ -388,35 +388,43 @@ void TitleScene::DrawOnlineMenu()
 
     static ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
 
-    if (! mApp.IsLogged())
+    if (!mApp.IsLogged())
     {
-        if (mConnectState == tribool::False)
+        if (mWsClient.IsConnected())
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
-            ImGui::Text("Connection error");
-            ImGui::PopStyleColor();
-        }
-        else if (mConnectState == tribool::True)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0,255,0,255));
-            ImGui::Text("Vous êtes connecté.");
-            ImGui::PopStyleColor();
+            if (mConnectState == tribool::False)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+                ImGui::Text("Connection error");
+                ImGui::PopStyleColor();
+            }
+            else if (mConnectState == tribool::True)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0,255,0,255));
+                ImGui::Text("Vous êtes connecté.");
+                ImGui::PopStyleColor();
+            }
+            else
+            {
+                ImGui::Text("Not connected! You cannot join any game server");
+            }
+
+            static char password[64] = "";
+            static char login[64] = "";
+            ImGui::InputText("Login",     login, 64);
+            ImGui::InputText("Password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
+
+            if (ImGui::Button("Connect"))
+            {
+                Login(login, password);
+            }
         }
         else
         {
-            ImGui::Text("Not connected! You cannot join any game server");
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+            ImGui::Text("Internet not detected on this device, check connection.");
+            ImGui::PopStyleColor();
         }
-
-        static char password[64] = "";
-        static char login[64] = "";
-        ImGui::InputText("Login",     login, 64);
-        ImGui::InputText("Password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
-
-        if (ImGui::Button("Connect"))
-        {
-            Login(login, password);
-        }
-
     }
     else
     {

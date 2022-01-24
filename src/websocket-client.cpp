@@ -64,7 +64,7 @@ void WebSocketClient::session::on_resolve(boost::beast::error_code ec, boost::as
     }
 
     // Set a timeout on the operation
-    boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
+    boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(5));
 
     // Make the connection on the IP address we get from a lookup
     boost::beast::get_lowest_layer(ws_).async_connect(
@@ -82,7 +82,7 @@ void WebSocketClient::session::on_connect(boost::beast::error_code ec, boost::as
     }
 
     // Set a timeout on the operation
-    boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
+    boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(5));
 
     // Set SNI Hostname (many hosts need this to handshake successfully)
     if(! SSL_set_tlsext_host_name(
@@ -188,6 +188,7 @@ void WebSocketClient::session::on_close(boost::beast::error_code ec)
 
 void WebSocketClient::session::on_failure(boost::beast::error_code ec, State error)
 {
+    std::cout << "[WS] FAILURE" << std::endl;
     mConnected = false;
     mState = error;
 }
@@ -209,6 +210,7 @@ std::string WebSocketClient::Run(const std::string &host, const std::string &por
     std::string response;
     try
     {
+        ioc.reset();
         // The SSL context is required, and holds certificates
         boost::asio::ssl::context ctx{boost::asio::ssl::context::tlsv12_client};
 
