@@ -176,6 +176,7 @@ void TitleScene::OnWsData(const std::string &data)
 {
     JsonReader reader;
     JsonValue json;
+    std::scoped_lock<std::mutex> lock(mMutex);
 
     if (reader.ParseString(json, data))
     {
@@ -186,6 +187,14 @@ void TitleScene::OnWsData(const std::string &data)
             {
                 // On reçoit la liste des serveurs
                 JsonArray serversList = json.FindValue("data").GetArray();
+
+                mServers.clear();
+                for (auto &s : serversList)
+                {
+                    ServerState state;
+                    FromServersList(state, s.GetObj());
+                    mServers.push_back(state);
+                }
             }
         }
         else
@@ -366,9 +375,9 @@ void TitleScene::DrawOnlineMenu()
 
     controls_width = rect.w;
     // make controls widget width to be 1/3 of the main window width
-    if ((controls_width /= 3) < 300)
+    if ((controls_width /= 3) < 400)
     {
-        controls_width = 300;
+        controls_width = 400;
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -380,7 +389,7 @@ void TitleScene::DrawOnlineMenu()
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
-                ImVec2(static_cast<float>(controls_width), static_cast<float>(rect.h / 3)),
+                ImVec2(static_cast<float>(controls_width), static_cast<float>(rect.h / 2)),
                 ImGuiCond_Always
                 );
     // create a window and append into it
@@ -428,27 +437,46 @@ void TitleScene::DrawOnlineMenu()
     }
     else
     {
-        if (ImGui::BeginTable("table1", 3, flags))
+        static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
+        const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+
+        // When using ScrollX or ScrollY we need to specify a size for our table container!
+        // Otherwise by default the table will fit all available space, like a BeginChild() call.
+        ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
+        if (ImGui::BeginTable("table1", 3, flags, outer_size))
         {
             // Display headers so we can inspect their interaction with borders.
             // (Headers are not the main purpose of this section of the demo, so we are not elaborating on them too much. See other sections for details)
-                ImGui::TableSetupColumn("One");
-                ImGui::TableSetupColumn("Two");
-                ImGui::TableSetupColumn("Three");
-                ImGui::TableHeadersRow();
+            ImGui::TableSetupColumn("Server name");
+            ImGui::TableSetupColumn("Number of players");
+            ImGui::TableSetupColumn("Number of tables");
+            ImGui::TableHeadersRow();
 
+            char buf[32];
+            static int selected_row = -1;
 
-            for (int row = 0; row < 5; row++)
+            std::scoped_lock<std::mutex> lock(mMutex);
+            for (int row = 0; row < mServers.size(); row++)
             {
                 ImGui::TableNextRow();
-                for (int column = 0; column < 3; column++)
-                {
-                    ImGui::TableSetColumnIndex(column);
-                    char buf[32];
-                    sprintf(buf, "Hello %d,%d", column, row);
-                    ImGui::TextUnformatted(buf);
 
+                ImGui::TableSetColumnIndex(0);
+//                ImGui::TextUnformatted(mServers[row].name.c_str());
+
+                ImGuiSelectableFlags selectable_flags =  ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+                if (ImGui::Selectable(mServers[row].name.c_str(), selected_row == row, selectable_flags, ImVec2(0, TEXT_BASE_HEIGHT)))
+                {
+                    selected_row = row;
                 }
+
+
+                ImGui::TableSetColumnIndex(1);
+                sprintf(buf, "%d", mServers[row].nb_players);
+                ImGui::TextUnformatted(buf);
+
+                ImGui::TableSetColumnIndex(2);
+                sprintf(buf, "%d", mServers[row].nb_tables);
+                ImGui::TextUnformatted(buf);
             }
             ImGui::EndTable();
         }

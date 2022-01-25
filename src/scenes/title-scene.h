@@ -3,14 +3,18 @@
 
 #include "gfx-engine.h"
 #include "i-application.h"
-#include <iostream>
+
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include "http-client.h"
 #include "websocket-client.h"
-#include <thread>
 #include "ThreadQueue.h"
+#include "Network.h"
+
 #include <JsonValue.h>
+
+#include <thread>
+#include <iostream>
 
 class TitleScene : public Scene, public WebSocketClient::IReadHandler
 {
@@ -47,6 +51,9 @@ private:
 
     WebSocketClient mWsClient;
     std::thread mWsThread;
+
+    std::mutex mMutex;
+    std::vector<ServerState> mServers;
 
     // From WebSocketClient::IReadHandler
     virtual void OnWsData(const std::string &data) override;
