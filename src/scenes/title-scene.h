@@ -16,14 +16,14 @@
 #include <thread>
 #include <iostream>
 
-class TitleScene : public Scene, public WebSocketClient::IReadHandler
+class TitleScene : public Scene
 {
 public:
     TitleScene(GfxSystem &system, IApplication &app, const std::string &version);
     ~TitleScene();
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
-    virtual void OnActivate(SDL_Renderer *renderer) override;
+    virtual void OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args) override;
     virtual void Draw(SDL_Renderer *renderer) override;
 
 private:
@@ -48,15 +48,6 @@ private:
     HttpClient mHttpClient;
     ThreadQueue<HttpClient::Request> mHttpQueue;
     std::thread mHttpThread;
-
-    WebSocketClient mWsClient;
-    std::thread mWsThread;
-
-    std::mutex mMutex;
-    std::vector<ServerState> mServers;
-
-    // From WebSocketClient::IReadHandler
-    virtual void OnWsData(const std::string &data) override;
 
     void DrawInfoMenu();
     void DrawMainMenu();

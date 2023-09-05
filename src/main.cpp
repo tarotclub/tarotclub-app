@@ -27,6 +27,16 @@ public:
         Log::RegisterListener(mApp);
     }
 
+    ~ClientProxy()
+    {
+        TLogInfo("[CLIENT_PROXY] Exit");
+    }
+
+    virtual void Initialize(const std::string &webId, const std::string &key, const std::string &passPhrase) override
+    {
+        mSession.Initialize(webId, key, passPhrase);
+    }
+
     void Start()
     {
         mSession.Initialize(localWebId1, localGameKey, localPassPhrase);

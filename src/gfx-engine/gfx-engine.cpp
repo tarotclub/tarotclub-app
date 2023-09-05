@@ -5,125 +5,17 @@
 #include "Util.h"
 #include "Log.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#define NANOSVG_IMPLEMENTATION
-#include "nanosvg.h"
-#define NANOSVGRAST_IMPLEMENTATION
-#include "nanosvgrast.h"
-
-/* Load a SVG type image from an SDL datasource */
-SDL_Texture *GfxEngine::LoadSVG(SDL_Renderer *renderer, const char *filename)
-{
-    std::string data = Util::FileToString(filename);
-    SDL_Texture * tex = GfxEngine::RenderSVG(renderer, data.data());
-
-    if (tex == nullptr)
-    {
-        tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 20, 20);
-    }
-
-    return tex;
-}
-
-SDL_Texture *GfxEngine::RenderSVG(SDL_Renderer *renderer, char *data)
-{
-    struct NSVGimage *image;
-    struct NSVGrasterizer *rasterizer;
-    SDL_Surface *surface = NULL;
-    float scale = 1.0f;
-
-    /* For now just use default units of pixels at 96 DPI */
-    image = nsvgParse(data, "px", 96.0f);
-
-    if ( !image ) {
-        //IMG_SetError("Couldn't parse SVG image");
-        return NULL;
-    }
-
-    rasterizer = nsvgCreateRasterizer();
-    if ( !rasterizer ) {
-       // IMG_SetError("Couldn't create SVG rasterizer");
-        nsvgDelete( image );
-        return NULL;
-    }
-
-    surface = SDL_CreateRGBSurface(SDL_SWSURFACE,
-                                   (int)(image->width * scale),
-                                   (int)(image->height * scale),
-                                   32,
-                                   0x000000FF,
-                                   0x0000FF00,
-                                   0x00FF0000,
-                                   0xFF000000);
-    if ( !surface ) {
-        nsvgDeleteRasterizer( rasterizer );
-        nsvgDelete( image );
-        return NULL;
-    }
-
-    nsvgRasterize(rasterizer, image, 0.0f, 0.0f, scale, (unsigned char *)surface->pixels, surface->w, surface->h, surface->pitch);
-    nsvgDeleteRasterizer( rasterizer );
-    nsvgDelete( image );
-
-    return SDL_CreateTextureFromSurface(renderer, surface);
-}
-
-
-
-SDL_Texture *GfxEngine::LoadImage(SDL_Renderer *renderer, const char* filename)
-{
-    // Read data
-    int32_t width, height, bytesPerPixel;
-    void* data = stbi_load(filename, &width, &height, &bytesPerPixel, 0);
-
-    // Calculate pitch
-    int pitch;
-    pitch = width * bytesPerPixel;
-    pitch = (pitch + 3) & ~3;
-
-    // Setup relevance bitmask
-    int32_t Rmask, Gmask, Bmask, Amask;
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-    Rmask = 0x000000FF;
-    Gmask = 0x0000FF00;
-    Bmask = 0x00FF0000;
-    Amask = (bytesPerPixel == 4) ? 0xFF000000 : 0;
-#else
-    int s = (bytesPerPixel == 4) ? 0 : 8;
-    Rmask = 0xFF000000 >> s;
-    Gmask = 0x00FF0000 >> s;
-    Bmask = 0x0000FF00 >> s;
-    Amask = 0x000000FF >> s;
-#endif
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(data, width, height, bytesPerPixel*8, pitch, Rmask, Gmask, Bmask, Amask);
-    SDL_Texture* t = nullptr;
-    if (surface)
-    {
-        t = SDL_CreateTextureFromSurface(renderer, surface);
-    }
-    else
-    {
-        t = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 20, 20);
-    }
-
-    STBI_FREE(data);
-    SDL_FreeSurface(surface);
-    return t;
-}
-
 void GfxEngine::AddScene(std::shared_ptr<Scene> scene, uint32_t id)
 {
     mScenes[id] = scene;
 }
 
-void GfxEngine::SwitchSceneTo(uint32_t sceneId)
+void GfxEngine::SwitchSceneTo(uint32_t sceneId, const std::map<std::string, Value> &args)
 {
     mCurrentSceneId = sceneId;
     mSceneActivated = true;
+    mArgs = args;
 }
-
 
 Rect GfxSystem::GetWindowSize()
 {
@@ -164,14 +56,17 @@ bool GfxEngine::Initialize()
     ImGuiIO& io = ImGui::GetIO();
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    (void) io.Fonts->AddFontFromFileTTF( "assets/fonts/roboto.ttf", 20);
+    mNormalFont = io.Fonts->AddFontFromFileTTF( "assets/fonts/roboto.ttf", 20);
 
     ImFontConfig config;
-    config.MergeMode = true;
+    config.MergeMode = true; // ATTENTION, MERGE AVEC LA FONT PRECEDENTE !!
 //    config.GlyphMinAdvanceX = 20.0f; // Use if you want to make the icon monospaced
 //    config.GlyphOffset.y += 1.0;
     static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     io.Fonts->AddFontFromFileTTF("assets/fonts/fa-solid-900.ttf", 16.0f, &config, icon_ranges);
+
+    mBigFont = io.Fonts->AddFontFromFileTTF( "assets/fonts/roboto.ttf", 60);
+
     io.Fonts->Build();
 
     io.IniFilename = nullptr; // disable .ini save/load windows sizes and locations
@@ -267,7 +162,7 @@ void GfxEngine::Warmup()
 }
 
 
-uint32_t GfxEngine::Process()
+uint32_t GfxEngine::Process(const Message &msg)
 {
     uint32_t nextScene = 0;
 
@@ -323,19 +218,25 @@ uint32_t GfxEngine::Process()
         if (mSceneActivated)
         {
             mSceneActivated = false;
-            s->OnActivate(mRenderer);
+            s->OnActivate(mRenderer, mArgs);
         }
 
         lastTick = currentTick;
         currentTick = SDL_GetPerformanceCounter();
         deltaTime = (double)((currentTick - lastTick)*1000 / (double)SDL_GetPerformanceFrequency() );
+
+        if (msg.size() > 0)
+        {
+            s->OnMessage(msg);
+        }
+
         s->Update(deltaTime);
         s->Draw(mRenderer);
 
         nextScene = s->GetNextScene();
         if (nextScene > 0)
         {
-            SwitchSceneTo(nextScene);
+            SwitchSceneTo(nextScene, s->GetArgs());
         }
     }
     else
@@ -363,75 +264,4 @@ void GfxEngine::Close()
 }
 
 
-Image::Image(GfxSystem &system, const std::string &path)
-    : Entity(system)
-    , mPath(path)
-{
-}
 
-Image::~Image()
-{
-    if (mTexture != nullptr)
-    {
-        SDL_DestroyTexture(mTexture);
-        mTexture = nullptr;
-    }
-}
-
-void Image::OnCreate(SDL_Renderer *renderer)
-{
-    Entity::OnCreate(renderer);
-
-    std::cout << "Loading: " << mPath << std::endl;
-
-    if (!Util::FileExists(mPath))
-    {
-        TLogError("[IMAGE] Can't find file: " + mPath);
-    }
-
-    mTexture = GfxEngine::LoadImage(renderer, mPath.c_str());
-
-    if (mTexture == nullptr)
-    {
-        TLogError("[IMAGE] Problem loading texture: " + mPath);
-    }
-
-    int w = 0;
-    int h = 0;
-    // get the width and height of the texture
-    if (SDL_QueryTexture(mTexture, NULL, NULL, &w, &h) == 0)
-    {
-        SetSize(w, h);
-    }
-}
-
-void Image::Draw(SDL_Renderer *renderer)
-{
-    if (!IsVisible())
-    {
-        return;
-    }
-
-    SDL_Rect rect = GetRect();
-    rect.w *= GetScale().x;
-    rect.h *= GetScale().y;
-
-    SDL_SetTextureBlendMode(mTexture, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureColorMod(mTexture, 255, 255, 255);
-    SDL_RenderCopyEx(renderer, mTexture, NULL, &rect, GetAngle(), NULL, SDL_FLIP_NONE);
-}
-
-void Image::DrawEx(SDL_Renderer *renderer, int x, int y)
-{
-    if (!IsVisible())
-    {
-        return;
-    }
-
-    SDL_Rect r = GetRect();
-    r.w *= GetScale().x;
-    r.h *= GetScale().y;
-    r.x = x;
-    r.y = y;
-    SDL_RenderCopyEx(renderer, mTexture, NULL, &r, GetAngle(), NULL, SDL_FLIP_NONE);
-}

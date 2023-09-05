@@ -31,7 +31,7 @@ public:
         int mTileWidth = 0;
         int mTileHeight = 0;
 
-        SDL_Texture *tileTexture = GfxEngine::LoadImage(renderer, "assets/hud/tile_bg1.png");
+        SDL_Texture *tileTexture = Image::LoadImage(renderer, "assets/hud/tile_bg1.png");
 
 
         // get the width and height of the texture
@@ -121,7 +121,6 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     : Scene(system)
     , mApp(app)
     , mVersion(version)
-    , mWsClient(*this)
 {
     auto bg = std::make_shared<Background>(GetSystem());
     mLogo = std::make_shared<Logo>(GetSystem());
@@ -139,21 +138,14 @@ TitleScene::~TitleScene()
     {
         mHttpThread.join();
     }
-
-    mWsClient.Close();
-    if (mWsThread.joinable())
-    {
-        mWsThread.join();
-    }
 }
 
 void TitleScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
-    mWsThread = std::thread(&TitleScene::RunWebSocket, this);
 }
 
-void TitleScene::OnActivate(SDL_Renderer *renderer)
+void TitleScene::OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args)
 {
     Scene::OnActivate(renderer);
 }
@@ -169,42 +161,6 @@ void TitleScene::Draw(SDL_Renderer *renderer)
     else if (mMenu == MENU_ONLINE)
     {
         DrawOnlineMenu();
-    }
-}
-
-void TitleScene::OnWsData(const std::string &data)
-{
-    JsonReader reader;
-    JsonValue json;
-    std::scoped_lock<std::mutex> lock(mMutex);
-
-    if (reader.ParseString(json, data))
-    {
-        if (json.HasValue("event"))
-        {
-            std::string event = json.FindValue("event").GetString();
-            if (event == "servers")
-            {
-                // On reçoit la liste des serveurs
-                JsonArray serversList = json.FindValue("data").GetArray();
-
-                mServers.clear();
-                for (auto &s : serversList)
-                {
-                    ServerState state;
-                    FromServersList(state, s.GetObj());
-                    mServers.push_back(state);
-                }
-            }
-        }
-        else
-        {
-            TLogError("[WEBSOCKET] No event field in JSON");
-        }
-    }
-    else
-    {
-        TLogError("[WEBSOCKET] Failed to parse event");
     }
 }
 
@@ -260,12 +216,6 @@ void TitleScene::DrawMainMenu()
     }
     ImGui::End();
 }
-#ifdef TAROT_DEBUG
-    static const std::string TAROTCLUB_HOST = "127.0.0.1";
-#else
-    static const std::string TAROTCLUB_HOST = "tarotclub.fr";
-#endif    
-
 
 
 void TitleScene::RunHttp()
@@ -293,7 +243,7 @@ void TitleScene::RunHttp()
                             Identity ident;
 
                             ident.username = json.FindValue("data:profile:username").GetString();
-                            ident.token = json.FindValue("data:profile:attr:token").GetString();
+                            ident.token = json.FindValue("data:token").GetString();
                             mApp.SetLogged(ident);
                             mConnectState = tribool::True;
                         }
@@ -320,30 +270,6 @@ void TitleScene::RunHttp()
     }
 }
 
-void TitleScene::RunWebSocket()
-{
-    bool quit = false;
-    while(!quit)
-    {
-        mWsClient.Run(TAROTCLUB_HOST, "9998");
-//    mWsClient.Run("fjdskqshkdsqgldl.fr", "9998");
-        // Ah on a quitté, pourquoi ?
-        WebSocketClient::State state = mWsClient.GetState();
-        if (state == WebSocketClient::STATE_NO_ERROR)
-        {
-            // pas d'erreur particulière, on quitte pour de bon
-            quit = true;
-        }
-        else
-        {
-            // Quelque chose s'est mal passé, on se reconnecte au serveur
-            std::this_thread::sleep_for(std::chrono::seconds(2));
-            TLogError("[WEBSOCKET] Error code: " + std::to_string(state) + " restarting connection...");
-        }
-    }
-
-}
-
 void TitleScene::HandleHttpReply()
 {
 
@@ -359,7 +285,7 @@ void TitleScene::Login(const std::string &login, const std::string &password)
     HttpClient::Request req;
 
     req.body = obj.ToString();
-    req.host = TAROTCLUB_HOST;
+    req.host = mApp.GetHost();
     req.port = "443";
     req.target = "/api/v1/auth/signin";
 
@@ -374,10 +300,9 @@ void TitleScene::DrawOnlineMenu()
     Rect rect = GetSystem().GetWindowSize();
 
     controls_width = rect.w;
-    // make controls widget width to be 1/3 of the main window width
-    if ((controls_width /= 3) < 400)
+    if ((controls_width /= 2) < 500)
     {
-        controls_width = 400;
+        controls_width = 500;
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -399,7 +324,7 @@ void TitleScene::DrawOnlineMenu()
 
     if (!mApp.IsLogged())
     {
-        if (mWsClient.IsConnected())
+        if (mApp.IsInternetDetected())
         {
             if (mConnectState == tribool::False)
             {
@@ -455,30 +380,48 @@ void TitleScene::DrawOnlineMenu()
             char buf[32];
             static int selected_row = -1;
 
-            std::scoped_lock<std::mutex> lock(mMutex);
-            for (int row = 0; row < mServers.size(); row++)
+            std::vector<ServerState> servers = mApp.GetServers();
+            for (int row = 0; row < servers.size(); row++)
             {
                 ImGui::TableNextRow();
 
                 ImGui::TableSetColumnIndex(0);
-//                ImGui::TextUnformatted(mServers[row].name.c_str());
-
                 ImGuiSelectableFlags selectable_flags =  ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
-                if (ImGui::Selectable(mServers[row].name.c_str(), selected_row == row, selectable_flags, ImVec2(0, TEXT_BASE_HEIGHT)))
+                if (ImGui::Selectable(servers[row].name.c_str(), selected_row == row, selectable_flags, ImVec2(0, TEXT_BASE_HEIGHT)))
                 {
                     selected_row = row;
                 }
 
-
                 ImGui::TableSetColumnIndex(1);
-                sprintf(buf, "%d", mServers[row].nb_players);
+                sprintf(buf, "%d", servers[row].nb_players);
                 ImGui::TextUnformatted(buf);
 
                 ImGui::TableSetColumnIndex(2);
-                sprintf(buf, "%d", mServers[row].nb_tables);
+                sprintf(buf, "%d", servers[row].nb_tables);
                 ImGui::TextUnformatted(buf);
             }
             ImGui::EndTable();
+
+
+            if (selected_row == -1)
+            {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            }
+            if (ImGui::Button("Rejoindre le serveur") && (selected_row >= 0))
+            {
+                std::map<std::string, Value> args;
+
+                // On envoie les informations du serveur à rejoindre
+                args["name"] = servers[selected_row].name;
+                args["id"] = servers[selected_row].id;
+                args["tcp_port"] = servers[selected_row].tcp_port;
+
+                SwitchToScene(SCENE_ONLINE_GAME, args);
+            }
+            if (selected_row == -1)
+            {
+                ImGui::PopItemFlag();
+            }
         }
     }
 

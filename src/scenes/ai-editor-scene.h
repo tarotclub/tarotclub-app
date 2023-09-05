@@ -24,13 +24,13 @@ public:
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
 
-    virtual void OnActivate(SDL_Renderer *renderer) override;
+    virtual void OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args) override;
 
     virtual void Update(double deltaTime) override;
 
     virtual void Draw(SDL_Renderer *renderer) override;
 
-    virtual void ProcessEvent(const SDL_Event &event);
+    virtual void ProcessEvent(const SDL_Event &event) override;
 
 private:
     IBoardEvent &mEvent;

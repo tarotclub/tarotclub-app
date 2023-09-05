@@ -10,6 +10,7 @@
 #include "Network.h"
 #include "ClientConfig.h"
 #include "i-application.h"
+#include "websocket-client.h"
 
 #include <list>
 #include <deque>
@@ -20,7 +21,11 @@
 
 #define TAROTCLUB_APP_VERSION   "3.0.0"
 
-class Application : public Observer<Log::Infos>, public INetClientEvent, public IBoardEvent, public IApplication
+class Application : public Observer<Log::Infos>
+        , public INetClientEvent
+        , public IBoardEvent
+        , public IApplication
+        , public WebSocketClient::IReadHandler
 {
 public:
     Application(INetClient &net);
@@ -32,7 +37,11 @@ public:
 
     // From IApplication
     bool IsLogged() override { return mLogged; }
+    bool IsInternetDetected() override;
     void SetLogged(const Identity &ident) override;
+    std::string GetHost() const override;
+    virtual void ConnectToServer(const std::string &serverId) override;
+    virtual std::vector<ServerState> GetServers() override;
 
 private:
     enum GameType {
@@ -63,9 +72,23 @@ private:
     bool mLogged = false;
 
     ThreadQueue<Request> mNetRequests;
+    ThreadQueue<GfxEngine::Message> mAsyncMessages; // messages qui peuvent venir d'autres threads
+
     std::vector<Reply> mNetReplies; // pas besoin d'une queue car l'envoi se réalise dans le thread applicatif (les sockets sont multi-threads
 
     GfxEngine mGfx;
+
+    // ---------------------  WEB SOCKET TUNNEL WITH WEBSITE  ---------------------
+    WebSocketClient mWsClient;
+    std::thread mWsThread;
+
+    std::mutex mMutex;
+    std::vector<ServerState> mServers;
+
+    // From WebSocketClient::IReadHandler
+    virtual void OnWsData(const std::string &data) override;
+    void RunWebSocket();
+
 
     void HandleRequest(const Request &req);
     void TimeoutEndOfTrickDelay();

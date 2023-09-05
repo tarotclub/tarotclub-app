@@ -176,9 +176,9 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
     }
 }
 
-void StoryModeScene::OnActivate(SDL_Renderer *renderer)
+void StoryModeScene::OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args)
 {
-    Scene::OnActivate(renderer);
+    Scene::OnActivate(renderer, args);
 }
 
 void StoryModeScene::Update(double deltaTime)
@@ -288,7 +288,7 @@ void Car::OnCreate(SDL_Renderer *renderer)
     {
         std::string newCarColor = replaceStringAll(mDeuxCvSVG, "{{COLOR}}", "#a17321");
 
-        mTexture = GfxEngine::RenderSVG(renderer, newCarColor.data());
+        mTexture = Image::RenderSVG(renderer, newCarColor.data());
         int w = 0;
         int h = 0;
         // get the width and height of the texture

@@ -31,32 +31,33 @@ set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/Session.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/Identity.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/TarotContext.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.h
+    ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.cpp
 )
 
 set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/main.cpp
     ${TAROT_ROOT}/src/scenes.h
-    ${TAROT_ROOT}/src/gfx-engine.cpp
-    ${TAROT_ROOT}/src/gfx-engine.h
-    ${TAROT_ROOT}/src/board-scene.cpp
-    ${TAROT_ROOT}/src/board-scene.h
-    ${TAROT_ROOT}/src/board-hud.cpp
-    ${TAROT_ROOT}/src/board-hud.h
     ${TAROT_ROOT}/src/i-board-event.h
-
     ${TAROT_ROOT}/src/application.cpp
     ${TAROT_ROOT}/src/application.h
     ${TAROT_ROOT}/src/Embedded.cpp
     ${TAROT_ROOT}/src/Embedded.h
     ${TAROT_ROOT}/src/http-client.h
-    ${TAROT_ROOT}/src/websocket-client.h
-    ${TAROT_ROOT}/src/websocket-client.cpp
-    ${TAROT_ROOT}/src/stb_image.h
-    ${TAROT_ROOT}/src/SDL2_gfxPrimitives.c
-    ${TAROT_ROOT}/src/SDL2_gfxPrimitives.h
-    ${TAROT_ROOT}/src/SDL2_rotozoom.c
-    ${TAROT_ROOT}/src/SDL2_rotozoom.h
     ${TAROT_ROOT}/src/assets.cpp
+
+    # ----------------  GFX ENGINE  ----------------
+    ${TAROT_ROOT}/src/gfx-engine/stb_image.h
+    ${TAROT_ROOT}/src/gfx-engine/SDL2_gfxPrimitives.c
+    ${TAROT_ROOT}/src/gfx-engine/SDL2_gfxPrimitives.h
+    ${TAROT_ROOT}/src/gfx-engine/SDL2_rotozoom.c
+    ${TAROT_ROOT}/src/gfx-engine/SDL2_rotozoom.h
+    ${TAROT_ROOT}/src/gfx-engine/gfx-engine.cpp
+    ${TAROT_ROOT}/src/gfx-engine/gfx-engine.h
+    ${TAROT_ROOT}/src/gfx-engine/entity.h
+    ${TAROT_ROOT}/src/gfx-engine/entity.cpp
+    ${TAROT_ROOT}/src/gfx-engine/image.h
+    ${TAROT_ROOT}/src/gfx-engine/image.cpp
 
     # ----------------  SCENE STORY  ----------------
     ${TAROT_ROOT}/src/story-mode-scene.cpp
@@ -71,6 +72,20 @@ set(PROJECT_SOURCES
     # ----------------  TITLE SCENE  ----------------
     ${TAROT_ROOT}/src/scenes/title-scene.cpp
     ${TAROT_ROOT}/src/scenes/title-scene.h
+
+    # ----------------  BOARD SCENE  ----------------
+    ${TAROT_ROOT}/src/scenes/board-scene.cpp
+    ${TAROT_ROOT}/src/scenes/board-scene.h
+    ${TAROT_ROOT}/src/components/hud/board-hud.cpp
+    ${TAROT_ROOT}/src/components/hud/board-hud.h
+
+    # ----------------  ONLINE BOARD SCENE  ----------------
+    ${TAROT_ROOT}/src/scenes/online-board-scene.cpp
+    ${TAROT_ROOT}/src/scenes/online-board-scene.h
+
+    # ----------------  LOCAL GAME SCENE  ----------------
+    ${TAROT_ROOT}/src/scenes/local-game-scene.h
+    ${TAROT_ROOT}/src/scenes/local-game-scene.cpp
 
     # ----------------  IMGUI  ----------------
     ${IMGUI_DIR}/imgui.cpp
@@ -96,6 +111,8 @@ set(TAROT_INCLUDES
     ${TAROT_ROOT}/src
     ${TAROT_ROOT}/src/scenes
     ${TAROT_ROOT}/src/components/ai-editor
+    ${TAROT_ROOT}/src/components/hud
+    ${TAROT_ROOT}/src/gfx-engine
 )
 
 

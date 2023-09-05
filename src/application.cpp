@@ -4,43 +4,14 @@
 #include "System.h"
 #include "story-mode-scene.h"
 #include "ai-editor-scene.h"
-
-class LocalGameScene : public BoardScene
-{
-public:
-
-    LocalGameScene(GfxSystem &system, IBoardEvent &event, PlayerContext &ctx, INetClient &net)
-        : BoardScene(system, event, ctx, SCENE_LOCAL_GAME)
-        , mNet(net)
-    {
-
-    }
-
-    virtual void OnActivate(SDL_Renderer *renderer)
-    {
-        BoardScene::OnActivate(renderer);
-
-         mNet.ConnectToHost("127.0.0.1", 4269U);
-    }
-
-private:
-    INetClient &mNet;
-};
-
-class OnlineGameScene : public BoardScene
-{
-public:
-
-    OnlineGameScene(GfxSystem &system, IBoardEvent &event, PlayerContext &ctx)
-        : BoardScene(system, event, ctx, SCENE_ONLINE_GAME)
-    {
-
-    }
-};
+#include "online-board-scene.h"
+#include "local-game-scene.h"
+#include "JsonReader.h"
 
 Application::Application(INetClient &net)
     : Observer(Log::All)
     , mNet(net)
+    , mWsClient(*this)
 {
 
     mCtx.mOptions.identity.username = "Belegar";
@@ -50,6 +21,11 @@ Application::Application(INetClient &net)
 
 Application::~Application()
 {
+    mWsClient.Close();
+    if (mWsThread.joinable())
+    {
+        mWsThread.join();
+    }
     Stop();
 }
 
@@ -58,10 +34,35 @@ bool Application::Initialize()
 
     bool gfxInit = mGfx.Initialize();
 
+    mWsThread = std::thread(&Application::RunWebSocket, this);
+
 //    mGfx.AddFont("menu", "assets/fonts/roboto.ttf", 20);
 //    mGfx.AddFont("icons", "assets/fonts/MaterialIcons-Regular.ttf", 20);
 
     return gfxInit;
+}
+
+void Application::RunWebSocket()
+{
+    bool quit = false;
+    while(!quit)
+    {
+        mWsClient.Run(GetHost(), "9998");
+        // Ah on a quitté, pourquoi ?
+        WebSocketClient::State state = mWsClient.GetState();
+        if (state == WebSocketClient::STATE_NO_ERROR)
+        {
+            // pas d'erreur particulière, on quitte pour de bon
+            quit = true;
+        }
+        else
+        {
+            // Quelque chose s'est mal passé, on se reconnecte au serveur
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            TLogError("[WEBSOCKET] Error code: " + std::to_string(state) + " restarting connection...");
+        }
+    }
+
 }
 
 void Application::Update(const Log::Infos &info)
@@ -74,7 +75,7 @@ int Application::Loop()
     // Initialize all scenes and stuff
     mGfx.AddScene(std::make_shared<TitleScene>(mGfx, *this, TAROTCLUB_APP_VERSION), SCENE_TITLE);
     mGfx.AddScene(std::make_shared<LocalGameScene>(mGfx, *this, mCtx, mNet), SCENE_LOCAL_GAME);
-    mGfx.AddScene(std::make_shared<OnlineGameScene>(mGfx, *this, mCtx), SCENE_ONLINE_GAME);
+    mGfx.AddScene(std::make_shared<OnlineBoardScene>(mGfx, *this, mCtx, mNet, *this), SCENE_ONLINE_GAME);
     mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx, *this), SCENE_STORY_MODE);
     mGfx.AddScene(std::make_shared<AiEditorScene>(mGfx, *this), SCENE_AI_EDITOR);
 
@@ -87,6 +88,7 @@ int Application::Loop()
     bool loop = true;
 
     Request req;
+    GfxEngine::Message msg;
 
     ApplyOptions();
 
@@ -106,13 +108,18 @@ int Application::Loop()
         // 2. On avance des éventuels timings / delay / timeouts
         mCtx.Update();
 
-        // 3. On traite les entrées (clavier/souris) et on affiche le jeu
-        if (mGfx.Process() == SCENE_EXIT)
+        // 3. On récupère les éventuels autres messages en provenance d'autres threads
+        //    et à destination de la scène courante
+        msg.clear();
+        mAsyncMessages.TryPop(msg);
+
+        // 4. On traite les entrées (clavier/souris) et on affiche le jeu
+        if (mGfx.Process(msg) == SCENE_EXIT)
         {
             loop = false;
         }
 
-        // 4. On envoie des trames réseau s'il y en a
+        // 5. On envoie des trames réseau s'il y en a
         if (mNetReplies.size() > 0)
         {
             mNet.Send(mCtx.mMyself.uuid, mNetReplies);
@@ -134,10 +141,45 @@ void Application::Stop()
 
 }
 
+bool Application::IsInternetDetected()
+{
+    return mWsClient.IsConnected();
+}
+
 void Application::SetLogged(const Identity &ident)
 {
     mLogged = true;
     mCtx.mOptions.identity = ident;
+}
+
+std::string Application::GetHost() const
+{
+#ifdef TAROT_DEBUG
+    static const std::string TAROTCLUB_HOST = "127.0.0.1";
+#else
+    static const std::string TAROTCLUB_HOST = "tarotclub.fr";
+#endif
+    return TAROTCLUB_HOST;
+}
+
+void Application::ConnectToServer(const std::string &serverId)
+{
+    if (mWsClient.IsConnected() && mLogged)
+    {
+        JsonObject order;
+
+        order.AddValue("cmd", "join");
+        order.AddValue("token", mCtx.mOptions.identity.token);
+        order.AddValue("serverId", serverId);
+
+        mWsClient.Send(order.ToString());
+    }
+}
+
+std::vector<ServerState> Application::GetServers()
+{
+    std::scoped_lock<std::mutex> lock(mMutex);
+    return mServers;
 }
 
 bool Application::Deliver(const Request &req)
@@ -209,6 +251,63 @@ void Application::ClickOnBoard()
     else
     {
         TLogError("ClickOnBoard() out of context!");
+    }
+}
+
+void Application::OnWsData(const std::string &data)
+{
+    JsonReader reader;
+    JsonValue json;
+    std::scoped_lock<std::mutex> lock(mMutex);
+
+    if (reader.ParseString(json, data))
+    {
+        if (json.HasValue("event"))
+        {
+            std::string event = json.FindValue("event").GetString();
+
+            // -----------------  Réception de la liste des serveurs  -----------------
+            if (event == "servers")
+            {
+                // On reçoit la liste des serveurs
+                JsonArray serversList = json.FindValue("data").GetArray();
+
+                mServers.clear();
+                for (auto &s : serversList)
+                {
+                    ServerState state;
+                    FromServersList(state, s.GetObj());
+                    mServers.push_back(state);
+                }
+            }
+            // -----------------  Réception du résultat de notre demande de join vers un serveur de jeu  -----------------
+            else if (event == "joinReply")
+            {
+                // Le site Internet nous a autorisé à rejoindre un serveur
+                // de jeu. En retour, il nous donne une clé de chiffrement unique à cette session de jeu
+                // ainsi qu'un identifiant
+                TLogInfo("[WS_RCV] joinReply");
+
+                std::string webId = json.FindValue("data:webId").GetString();
+                std::string gek = json.FindValue("data:webId").GetString();
+                std::string passphrase = json.FindValue("data:webId").GetString();
+
+                mNet.Disconnect();
+                mNet.Initialize(webId, gek, passphrase);
+
+                GfxEngine::Message msg;
+                msg["event"] = "accessGranted";
+                mAsyncMessages.Push(msg);
+            }
+        }
+        else
+        {
+            TLogError("[WS_RCV] No event field in JSON");
+        }
+    }
+    else
+    {
+        TLogError("[WS_RCV] Failed to parse event");
     }
 }
 

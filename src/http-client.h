@@ -81,7 +81,6 @@ public:
 
 private:
 
-
     // Performs an HTTP GET and prints the response
     class session : public std::enable_shared_from_this<session>
     {

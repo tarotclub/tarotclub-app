@@ -105,7 +105,7 @@ void BoardScene::OnCreate(SDL_Renderer *renderer)
     SDL_FreeFormat(fmt);
 }
 
-void BoardScene::OnActivate(SDL_Renderer *renderer)
+void BoardScene::OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args)
 {
     Scene::OnActivate(renderer);
 }
@@ -297,8 +297,6 @@ void BoardScene::ProcessEvent(const SDL_Event &event)
         {
             if (mCtx.IsMyTurn())
             {
-                std::vector<std::shared_ptr<GfxCard>> collision;
-
                 for (auto & c : mCtx.mDeck)
                 {
                     auto sprite = mFullDeck[c.ToString()];

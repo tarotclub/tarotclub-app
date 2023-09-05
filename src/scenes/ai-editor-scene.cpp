@@ -29,7 +29,7 @@ void AiEditorScene::OnCreate(SDL_Renderer *renderer)
     mView.OnStart();
 }
 
-void AiEditorScene::OnActivate(SDL_Renderer *renderer)
+void AiEditorScene::OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args)
 {
     Scene::OnActivate(renderer);
 }
