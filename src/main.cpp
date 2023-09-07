@@ -103,7 +103,7 @@ void task_server()
 
         TLogInfo("[SERVER] Thread started");
 
-        io_context.run();
+     //   io_context.run();
 
         TLogError("[SERVER] Thread halted");
     }

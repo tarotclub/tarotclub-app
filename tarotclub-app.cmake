@@ -3,10 +3,12 @@
 set(IMGUI_DIR ${TAROT_ROOT}/libs/imgui)
 set(IMGUI_NODE_EDITOR_DIR ${TAROT_ROOT}/libs/imgui-node-editor)
 
-set(ICL_ROOT ${TAROT_ROOT}/libs/icl)
-include(${ICL_ROOT}/icl.cmake)
+set(MBEDTLS_DIR ${TAROT_ROOT}/libs/tarotclub-core/mbedtls-3.4.1)
 
-add_subdirectory(${ICL_ROOT} icl)
+#set(ICL_ROOT ${TAROT_ROOT}/libs/icl)
+#include(${ICL_ROOT}/icl.cmake)
+
+add_subdirectory(${MBEDTLS_DIR} mbdedtls)
 
 set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/ServerConfig.cpp
@@ -33,6 +35,16 @@ set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/TarotContext.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.h
     ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/JsonValue.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/Value.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/JsonReader.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/JsonWriter.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/Util.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/UniqueId.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/jsengine/duk_module_duktape.c
+    ${TAROT_ROOT}/libs/tarotclub-core/jsengine/duktape.c
+    ${TAROT_ROOT}/libs/tarotclub-core/jsengine/JSEngine.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/zip/Zip.cpp
 )
 
 set(PROJECT_SOURCES
@@ -45,6 +57,11 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/Embedded.h
     ${TAROT_ROOT}/src/http-client.h
     ${TAROT_ROOT}/src/assets.cpp
+    ${TAROT_ROOT}/src/Base64Util.cpp
+    ${TAROT_ROOT}/src/Log.cpp
+    ${TAROT_ROOT}/src/DataBase.cpp
+    ${TAROT_ROOT}/src/sqlite3.c
+    ${TAROT_ROOT}/src/Console.cpp
 
     # ----------------  GFX ENGINE  ----------------
     ${TAROT_ROOT}/src/gfx-engine/stb_image.h
@@ -105,6 +122,9 @@ set(TAROT_INCLUDES
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${TAROT_ROOT}/libs/tarotclub-core
+    ${TAROT_ROOT}/libs/tarotclub-core/jsengine
+    ${TAROT_ROOT}/libs/tarotclub-core/zip
+    ${MBEDTLS_DIR}/include
 #    ${TAROT_ROOT}/libs/asio
     ${TAROT_ROOT}/libs/nanosvg/src
     ${IMGUI_NODE_EDITOR_DIR}

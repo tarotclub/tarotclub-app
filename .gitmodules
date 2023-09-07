@@ -1,12 +1,9 @@
-[submodule "libs/icl"]
-	path = libs/icl
-	url = https://github.com/brasserie/icl.git
-[submodule "libs/imgui"]
-	path = libs/imgui
-	url = https://github.com/ocornut/imgui.git
-[submodule "libs/tarotclub-core"]
-	path = libs/tarotclub-core
-	url = https://github.com/tarotclub/tarotclub-core.git
 [submodule "libs/imgui-node-editor"]
 	path = libs/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor.git
+[submodule "libs/tarotclub-core"]
+	url = git@github.com:tarotclub/tarotclub-core.git
+[submodule "libs/imgui"]
+	url = git@github.com:ocornut/imgui.git
+[submodule "libs/icl"]
+	url = git@github.com:arabine/icl.git
