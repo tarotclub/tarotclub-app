@@ -2,116 +2,126 @@
 
 #include <iostream>
 
-// Tarot
 #include "Log.h"
-#include "Lobby.h"
-#include "Server.h"
-#include "TournamentConfig.h"
 #include "System.h"
-#include "GetOptions.h"
-#include "Embedded.h"
-#include "application.h"
 
-static const std::string localGameKey = "1234567890abcdef";
-static const std::string localPassPhrase = "lacaravanepasse";
-static const std::string localWebId1 = "southId";
+#include "scenes.h"
 
-// Classe passe-plat entre divers objets
-class ClientProxy : private INetClient
+#include "story-mode-scene.h"
+#include "title-scene.h"
+
+/**
+ * @brief The LivreurApp class
+ *
+ * Couleurs:
+ *             Foncé          Clair
+ *           -------------------------
+ *  Sable    |  ffd863        fef3d5
+ *  Gris     |  515050        80828f
+ *  Bleu     |  4793e6        ddeafa
+ *
+ */
+
+
+
+class LivreurApp : public IApplication, public IBoardEvent
 {
 public:
-    ClientProxy()
-        : mApp(*this)
-        , mSession(mApp)
-    {
-        Log::RegisterListener(mApp);
-    }
 
-    ~ClientProxy()
-    {
-        TLogInfo("[CLIENT_PROXY] Exit");
-    }
+    void Loop() {
+         bool gfxInit = mGfx.Initialize("Livreur de Magazines : l'Ascension de Denis");
 
-    virtual void Initialize(const std::string &webId, const std::string &key, const std::string &passPhrase) override
-    {
-        mSession.Initialize(webId, key, passPhrase);
-    }
 
-    void Start()
-    {
-        mSession.Initialize(localWebId1, localGameKey, localPassPhrase);
-        // Initialize SDL & ImGui
-        if (!mApp.Initialize())
+        mGfx.AddScene(std::make_shared<TitleScene>(mGfx, *this, "v3.velo"), SCENE_TITLE);
+        mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx, *this), SCENE_STORY_MODE);
+
+
+        mGfx.SwitchSceneTo(SCENE_TITLE); // First scene
+
+        mGfx.Warmup();
+
+        bool loop = true;
+
+        Request req;
+        GfxEngine::Message msg;
+
+
+        // Boucle principale de l'application qui se charge de l'affichage et des données du joueur humain
+        // Ici on tourne dans un thread, si d'autres threads veulent communiquer avec nous, il faut passer par une queue de messages
+        // ainsi, on n'a quasiment aucun "lock" trop long
+        while (loop)
         {
-            std::cout << "Initialization failure" << std::endl;
-        }
-        else
-        {
-            mApp.Loop();
-        }
+            //        // 1. On récupère et on décode les trames réseau
+            //        if (mNetRequests.TryPop(req))
+            //        {
+            //            // Il est important de décoder dans le même thread que la boucle d'affichage
+            //            // de cette façon, on n'a pas d'accès concurrentiel à gérer (mutex)
+            //            HandleRequest(req);
+            //        }
 
-        mSession.Disconnect();
-        mSession.Close();
+            // 2. On avance des éventuels timings / delay / timeouts
+            //        mCtx.Update();
+
+            // 3. On récupère les éventuels autres messages en provenance d'autres threads
+            //    et à destination de la scène courante
+            msg.clear();
+            mAsyncMessages.TryPop(msg);
+
+            // 4. On traite les entrées (clavier/souris) et on affiche le jeu
+            if (mGfx.Process(msg) == SCENE_EXIT)
+            {
+                loop = false;
+            }
+        }
     }
+
+    virtual bool IsLogged() override {
+        return true;
+    }
+    virtual bool IsInternetDetected() override {
+        return true;
+    }
+    virtual void SetLogged(const Identity &ident) override {
+
+    }
+    virtual std::string GetHost() const override {
+        return "";
+    }
+    virtual void ConnectToServer(const std::string &serverId) override {
+
+    }
+    virtual std::vector<ServerState> GetServers() override {
+        return std::vector<ServerState>();
+    }
+
+
+    // IBoardEvent
+    virtual void ChatMessage(const std::string &msg) override {
+
+    }
+    virtual void SendMyBid() override {
+
+    }
+    virtual void SendMyCard(const Card &c) override {
+
+    }
+    virtual void ConfigChanged() override {
+
+    }
+    virtual void ExitGame()  override {
+
+    }
+    virtual void ClickOnBoard() override {
+
+    }
+
 
 private:
-    virtual void Send(uint32_t my_uid, const std::vector<Reply> &replies) override {
-        mSession.Send(my_uid, replies);
-    }
 
-    virtual void ConnectToHost(const std::string &host, uint16_t tcp_port) override {
-        mSession.ConnectToHost(host, tcp_port);
-    }
-
-    virtual void Disconnect() override {
-        mSession.Disconnect();
-    }
-
-    Application mApp;
-    Session mSession;
+    GfxEngine mGfx;
+    ThreadQueue<Request> mNetRequests;
+    ThreadQueue<GfxEngine::Message> mAsyncMessages; // messages qui peuvent venir d'autres threads
 };
-
-static const Identity ident[3] = {
-    Identity("Bender", "", Identity::cGenderRobot),
-    Identity("T800", "", Identity::cGenderRobot),
-    Identity("C3PO", "", Identity::cGenderRobot)
-};
-
-static std::list<std::uint32_t> mIds;
-static BotManager mBots;
-static ThreadQueue<bool> gServerStarted;
-static asio::io_context io_context;
-
-void task_server()
-{
-    try
-    {
-        asio::executor_work_guard<decltype(io_context.get_executor())> work{io_context.get_executor()};
-        ServerOptions options = ServerConfig::GetDefault();
-        options.localHostOnly = true;
-
-        Server s(io_context, options);
-
-        s.AddClient(localWebId1, localGameKey, localPassPhrase);
-
-        for (std::uint32_t i = 0U; i < (sizeof(ident) / sizeof(ident[0])); i++)
-        {
-            s.AddClient(ident[i].username, localGameKey, localPassPhrase);
-        }
-
-        gServerStarted.Push(true);
-
-        TLogInfo("[SERVER] Thread started");
-
-     //   io_context.run();
-
-        TLogError("[SERVER] Thread halted");
-    }
-    catch (std::exception& e)
-    {
-        std::cerr << "Exception: " << e.what() << "\n";
-    }
-}
 
 extern "C" int main(int argc, char *argv[])
 {
@@ -123,35 +133,8 @@ extern "C" int main(int argc, char *argv[])
     Log::SetLogPath(System::LogPath());
     TLogInfo("Using home path: " + homePath);
 
-    // Application client, initialisée très tôt pour avoir les logs redirigés au plus tôt
-    ClientProxy client;
+    LivreurApp app;
+    app.Loop();
 
-    // On démarre le serveur local
-    std::thread thread_server(task_server);
-
-    // Wait for server start
-    bool started = false;
-    gServerStarted.WaitAndPop(started);
-
-    ArrayPtr<const std::uint8_t> array = gen::GetFile();
-    std::string buffer((const char *)array.Data(), array.Size());
-    for (std::uint32_t i = 0U; i < (sizeof(ident) / sizeof(ident[0])); i++)
-    {
-        std::uint32_t botId = mBots.AddBot(Protocol::TABLES_UID, ident[i], 0U, buffer);
-        mIds.push_back(botId);
-        mBots.Initialize(botId, ident[i].username, localGameKey, localPassPhrase);
-        mBots.ConnectBot(botId, "127.0.0.1", 4269U);
-    }
-
-    client.Start();
-
-    mBots.Close();
-    mBots.KillBots();
-
-    io_context.stop();
-    if (thread_server.joinable())
-    {
-        thread_server.join();
-    }
     return 0;
 }

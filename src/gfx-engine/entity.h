@@ -67,80 +67,35 @@ public:
     virtual void OnCreate(SDL_Renderer *renderer) { (void) renderer; }
 
     // Manage user interaction (mouse, keyboard...)
-    virtual void ProcessEvent(const SDL_Event &event)
-    {
-        (void) event;
-    }
+    virtual void ProcessEvent(const SDL_Event &event);
 
     // Update state
-    virtual void Update(double deltaTime) { (void) deltaTime; }
+    virtual void Update(double deltaTime);
 
     // Draw to screen
-    virtual void Draw(SDL_Renderer *renderer) { (void) renderer; }
+    virtual void Draw(SDL_Renderer *renderer);
 
-    bool IsVisible() const { return mVisible; }
-    void SetVisible(bool visible) { mVisible = visible; }
+    bool IsVisible() const;
 
-    int GetX() const
-    {
-        return mRect.x;
-    }
 
-    int GetY() const
-    {
-        return mRect.y;
-    }
-
-    const SDL_Rect &GetRect() const
-    {
-        return mRect;
-    }
-
-    void SetSize(int w, int h)
-    {
-        mRect.w = w;
-        mRect.h = h;
-    }
-
-    Vector2f &GetScale()
-    {
-        return mScale;
-    }
-    float GetAngle() const
-    {
-        return mAngle;
-    }
-    void SetPos(int x, int y)
-    {
-        mRect.x = x;
-        mRect.y = y;
-    }
-
-    void SetScale(float x, float y)
-    {
-        mScale.x = x;
-        mScale.y = y;
-    }
-    void SetAngle(float angle)
-    {
-        mAngle = angle;
-    }
-
-    void SetSceneIdOnwer(uint32_t sceneId) {
-        mSceneIdOnwer = sceneId;
-    }
-
-    void SetId(uint32_t id) {
-        mId = id;
-    }
-
-    void SetZ(uint32_t z) {
-        mZ = z;
-    }
-
-    uint32_t GetZ() const { return mZ; }
-
+    int GetX() const;
+    int GetY() const;
+    int GetWidth() const;
+    int GetHeight() const;
+    const SDL_Rect &GetRect() const;
+    Vector2f &GetScale();
+    float GetAngle() const;
     GfxSystem &GetSystem() { return mSystem; }
+
+    void SetVisible(bool visible);
+    void SetPos(int x, int y);
+    void SetSize(int w, int h);
+    void SetScale(float x, float y);
+    void SetAngle(float angle);
+    void SetSceneIdOnwer(uint32_t sceneId);
+    void SetId(uint32_t id);
+    void SetZ(uint32_t z);
+    uint32_t GetZ() const { return mZ; }
 
 private:
     GfxSystem &mSystem; // keep it first please

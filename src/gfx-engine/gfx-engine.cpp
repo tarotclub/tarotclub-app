@@ -24,7 +24,7 @@ Rect GfxSystem::GetWindowSize()
     return rect;
 }
 
-bool GfxEngine::Initialize()
+bool GfxEngine::Initialize(const std::string &window_title)
 {
     // initiate SDL
     if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS |
@@ -40,7 +40,7 @@ bool GfxEngine::Initialize()
         | SDL_WINDOW_ALLOW_HIGHDPI
         );
     mWindow = SDL_CreateWindow(
-        "TarotClub",
+        window_title.c_str(),
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         mWidth,
@@ -75,12 +75,13 @@ bool GfxEngine::Initialize()
 
     ImVec4* colors = style.Colors;
 
-    style.WindowRounding    = 2.0f;             // Radius of window corners rounding. Set to 0.0f to have rectangular windows
+    style.WindowRounding    = 0.0f;             // Radius of window corners rounding. Set to 0.0f to have rectangular windows
+    style.WindowBorderSize  = 1.0f;
+
     style.ScrollbarRounding = 3.0f;             // Radius of grab corners rounding for scrollbar
     style.GrabRounding      = 2.0f;             // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
     style.AntiAliasedLines  = true;
     style.AntiAliasedFill   = true;
-    style.WindowRounding    = 2;
     style.ChildRounding     = 2;
     style.ScrollbarSize     = 16;
     style.ScrollbarRounding = 3;
@@ -88,20 +89,24 @@ bool GfxEngine::Initialize()
     style.ItemSpacing.x     = 10;
     style.ItemSpacing.y     = 4;
     style.IndentSpacing     = 22;
+
+    style.Alpha             = 1.0f;
+
     style.FramePadding.x    = 6;
     style.FramePadding.y    = 4;
-    style.Alpha             = 1.0f;
-    style.FrameRounding     = 3.0f;
+    style.FrameRounding     = 0.0f;
+    style.FrameBorderSize   = 1.0f;
+
 
     colors[ImGuiCol_Text]                   = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
     colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-    colors[ImGuiCol_WindowBg]              = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+    colors[ImGuiCol_WindowBg]              = ImVec4(1.0f, 0.847f, 0.388f, 1.00f); // Jaune foncé
     //colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_PopupBg]                = ImVec4(0.93f, 0.93f, 0.93f, 0.98f);
-    colors[ImGuiCol_Border]                = ImVec4(0.71f, 0.71f, 0.71f, 0.08f);
-    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.04f);
-    colors[ImGuiCol_FrameBg]               = ImVec4(0.71f, 0.71f, 0.71f, 0.55f);
+    colors[ImGuiCol_Border]                = ImVec4(0.318f, 0.314f, 0.314f, 1.0f); // Gris foncé
+    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]               = ImVec4(1.0f, 0.847f, 0.388f, 1.00f); // 0xFF, 0xD8, 0x63, 0xFF
     colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.94f, 0.94f, 0.94f, 0.55f);
     colors[ImGuiCol_FrameBgActive]         = ImVec4(0.71f, 0.78f, 0.69f, 0.98f);
     colors[ImGuiCol_TitleBg]               = ImVec4(0.85f, 0.85f, 0.85f, 1.00f);
@@ -116,7 +121,7 @@ bool GfxEngine::Initialize()
     colors[ImGuiCol_SliderGrab]            = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
     colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
     colors[ImGuiCol_Button]                = ImVec4(0.71f, 0.78f, 0.69f, 0.40f);
-    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.725f, 0.805f, 0.702f, 1.00f);
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.278, 0.576, 0.902, 1.00f);  // Bleu foncé
     colors[ImGuiCol_ButtonActive]          = ImVec4(0.793f, 0.900f, 0.836f, 1.00f);
     colors[ImGuiCol_Header]                = ImVec4(0.71f, 0.78f, 0.69f, 0.31f);
     colors[ImGuiCol_HeaderHovered]         = ImVec4(0.71f, 0.78f, 0.69f, 0.80f);

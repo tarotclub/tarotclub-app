@@ -96,11 +96,15 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     : Scene(system)
     , mEvent(event)
 {
-    mMap = std::make_shared<FranceMap>(GetSystem());
+    m_map = std::make_shared<FranceMap>(GetSystem());
     mCar = std::make_shared<Car>(GetSystem());
-
-//    AddEntity(mMap);
-    AddEntity(mCar);
+    m_velo = std::make_shared<Velo>(GetSystem());
+    m_head = std::make_shared<DenisHead>(GetSystem());
+    
+    AddEntity(m_map);
+    AddEntity(m_velo);
+    AddEntity(m_head);
+//    AddEntity(mCar);
 }
 
 
@@ -121,7 +125,7 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
     lat = 0.;
 
     std::vector<std::vector<Value> > results;
-    std::string ret = mDb.Query("SELECT lon, lat FROM communes WHERE nom='Limalonges';", results);
+    std::string ret = mDb.Query("SELECT lon, lat FROM communes WHERE nom='Arcueil';", results);
 
     std::cout << ret;
 
@@ -135,8 +139,6 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
             // Centre : Saint-Amand-Montrond (46° 43′ 17″ N, 2° 30′ 37″ E)
             // Latitude : 46.721389 | Longitude : 2.510278
 
-
-
             // Distance Entre limalonges et le coin en haut à gauche :
             double distance = distanceEarth(lat, lon, 42.3333333, -4.795555555555556);
             std::cout << "LIMALONGES D: " << distance << std::endl;
@@ -147,9 +149,9 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
             double north = deg2rad(51.0891667);
             double ymin = mercatorY(south);
             double ymax = mercatorY(north);
-
-            double xFactor = mMap->GetWZoomed()/(east - west);
-            double yFactor = mMap->GetHZoomed()/(ymax - ymin);
+            
+            double xFactor = m_map->GetWZoomed()/(east - west);
+            double yFactor = m_map->GetHZoomed()/(ymax - ymin);
 
 //            lon = 0;
             double limalongesW = (deg2rad(lon) - west) * xFactor;
@@ -157,8 +159,8 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 
             double franceH = meridien_distance(42.3327778, 51.0891667);
             limalongesH = meridien_distance(lat, 51.0891667);
-
-            limalongesH = limalongesH * mMap->GetHZoomed() / franceH;
+            
+            limalongesH = limalongesH * m_map->GetHZoomed() / franceH;
 
             std::cout << "LIMALONGES W: " << limalongesW << std::endl;
             std::cout << "LIMALONGES H: " << limalongesH << std::endl;
@@ -188,18 +190,18 @@ void StoryModeScene::Update(double deltaTime)
 
 void StoryModeScene::Draw(SDL_Renderer *renderer)
 {
-    SDL_SetRenderDrawColor(renderer,  0x09, 0x72, 0x00, 255);
+    SDL_SetRenderDrawColor(renderer,  0xdd, 0xea, 0xfa, 255);
     // Clear the entire screen to our selected color.
     SDL_RenderClear(renderer);
 
     Scene::Draw(renderer);
 
   //  filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
+    
+    vlineRGBA(renderer, city.x + m_map->GetCursorX(), 0, m_map->GetHZoomed(), 255, 0, 0, 255 );
+    hlineRGBA(renderer, 0, m_map->GetWZoomed(), city.y + m_map->GetCursorY(), 255, 0, 0, 255 );
 
-    vlineRGBA(renderer, city.x, 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
-    hlineRGBA(renderer, 0, mMap->GetWZoomed(), city.y, 255, 0, 0, 255 );
-
-    vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
+   // vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
 }
 
 void StoryModeScene::ProcessEvent(const SDL_Event &event)
@@ -207,7 +209,7 @@ void StoryModeScene::ProcessEvent(const SDL_Event &event)
     Scene::ProcessEvent(event);
 }
 
-
+SDL_Rect world = {0, 0, 1728, 972};
 
 void FranceMap::OnCreate(SDL_Renderer *renderer)
 {
@@ -217,18 +219,27 @@ void FranceMap::OnCreate(SDL_Renderer *renderer)
     int w = GetSystem().GetWindowSize().w;
     int h = GetSystem().GetWindowSize().h;
 
-    mZoom = (float)h / (GetRect().h);
+    m_zoom = (float)h / (GetRect().h);
 
-    mWZoomed = GetRect().w * mZoom;
+    mWZoomed = GetRect().w * m_zoom;
     mHZoomed = h;
+
+    m_cursor_x = 0.0;
+    m_cursor_y = 0.0;
+
+    m_map_x = 0.0;
+    m_map_y = 0.0;
 
     std::cout << "MAP SIZE: " << mWZoomed << ", " << mHZoomed << std::endl;
 }
 
 void FranceMap::Draw(SDL_Renderer *renderer)
 {
-    SetPos(mOffsetX, mOffsetY);
-    SetScale(mZoom, mZoom);
+  //  m_map_x = m_map_x - (m_cursor_x / GetSystem().GetWindowSize().w * (m_map_x - GetRect().w));
+   // m_map_x = m_map_x - (m_cursor_x / GetSystem().GetWindowSize().w * (m_map_x - GetRect().w));
+
+    SetPos(m_map_x + m_cursor_x, m_map_y + m_cursor_y);
+    SetScale(m_zoom, m_zoom);
     DrawEx(renderer, GetX(), GetY());
 
 
@@ -243,29 +254,56 @@ void FranceMap::ProcessEvent(const SDL_Event &event)
         if(event.wheel.y > 0) // scroll up
         {
             // Put code for handling "scroll up" here!
-            mZoom += 0.1;
-            mOffsetX = -(xMouse * 0.1);
-            mOffsetY = -(yMouse * 0.1);
+            if (m_zoom < 1.8)
+            {
+                m_zoom += 0.1;
+            }
+            m_cursor_x = xMouse;
+            m_cursor_y = yMouse;
         }
         else if(event.wheel.y < 0) // scroll down
         {
             // Put code for handling "scroll down" here!
-            mZoom -= 0.1;
-            mOffsetX = (xMouse * 0.1);
-            mOffsetY = (yMouse * 0.1);
+            if (m_zoom > 0.3)
+            {
+                m_zoom -= 0.1;
+            }
+            m_cursor_x = xMouse;
+            m_cursor_y = yMouse;
         }
-
-        std::cout << "Zoom: " << mZoom << std::endl;
     }
 
     if (event.type == SDL_MOUSEMOTION)
     {
         if ((mask & SDL_BUTTON_LMASK) == SDL_BUTTON_LMASK)
         {
-            mOffsetX += event.motion.xrel;
-            mOffsetY += event.motion.yrel;
+            m_cursor_x += event.motion.xrel;
+            m_cursor_y += event.motion.yrel;
+
+            if (m_cursor_x > (GetSystem().GetWindowSize().w / 4))
+            {
+                m_cursor_x = (GetSystem().GetWindowSize().w / 4);
+            }
+
+            if (m_cursor_x < -(GetSystem().GetWindowSize().w / 4))
+            {
+                m_cursor_x = -(GetSystem().GetWindowSize().w / 4);
+            }
+
+            if (m_cursor_y > (GetSystem().GetWindowSize().h / 4))
+            {
+                m_cursor_y = (GetSystem().GetWindowSize().h / 4);
+            }
+
+            if (m_cursor_y < -(GetSystem().GetWindowSize().h / 4))
+            {
+                m_cursor_y = -(GetSystem().GetWindowSize().h / 4);
+            }
+
+
         }
     }
+    std::cout << "Zoom: " << m_zoom << " cursor X: " << m_cursor_x << " cursor Y: " << m_cursor_y << std::endl;
 }
 
 std::string replaceStringAll(std::string str, const std::string& old, const std::string& new_s)

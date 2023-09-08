@@ -29,6 +29,7 @@ class GfxSystem
 {
 public:
     Rect GetWindowSize();
+    SDL_Renderer *GetRenderer() { return mRenderer; }
 
 protected:
     SDL_Window *mWindow = nullptr;
@@ -153,7 +154,7 @@ public:
 
     }
 
-    bool Initialize();
+    bool Initialize(const std::string &window_title);
 
     void Warmup();
     uint32_t Process(const Message &msg);

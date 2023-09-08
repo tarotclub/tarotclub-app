@@ -19,6 +19,8 @@ public:
     void SetHighlight(bool enable) { mHighlight = enable; }
     bool IsHighlighted() const { return mHighlight; }
 
+    SDL_Texture *GetTexture() const { return mTexture; }
+
     static SDL_Texture *LoadSVG(SDL_Renderer *renderer, const char *filename);
     static SDL_Texture *RenderSVG(SDL_Renderer *renderer, const std::string &svgData);
     static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);

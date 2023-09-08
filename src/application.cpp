@@ -32,7 +32,7 @@ Application::~Application()
 bool Application::Initialize()
 {
 
-    bool gfxInit = mGfx.Initialize();
+    bool gfxInit = mGfx.Initialize("TarotClub");
 
     mWsThread = std::thread(&Application::RunWebSocket, this);
 

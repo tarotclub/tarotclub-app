@@ -104,13 +104,13 @@ public:
         : Image(s, "assets/hud/logo.png")
     {
         mYPos = GetSystem().GetWindowSize().h / 3;
-        SetPos(50, mYPos);
+        SetPos(200, mYPos);
         SetScale(0.5, 0.5);
     }
 
     virtual void Draw(SDL_Renderer *renderer) override
     {
-        DrawEx(renderer, GetX(), mYPos + 6*SDL_sin(SDL_GetTicks()*(3.14/1500)));
+      //  DrawEx(renderer, GetX(), mYPos + 6*SDL_sin(SDL_GetTicks()*(3.14/1500)));
     }
 private:
     int mYPos;
@@ -169,51 +169,31 @@ void TitleScene::DrawMainMenu()
     // get the window size as a base for calculating widgets geometry
     int controls_width = 0;
 
-    Rect rect = GetSystem().GetWindowSize();
-
-    controls_width = rect.w;
-    // make controls widget width to be 1/3 of the main window width
-    if ((controls_width /= 3) < 300)
-    {
-        controls_width = 300;
-    }
-
     // position the controls widget in the top-right corner with some margin
-    ImGui::SetNextWindowPos(ImVec2(400, (rect.h /3)), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(45, 45), ImGuiCond_Always);
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
-                ImVec2(static_cast<float>(controls_width), static_cast<float>(rect.h / 3)),
+                ImVec2(static_cast<float>(740), static_cast<float>(340)),
                 ImGuiCond_Always
                 );
     // create a window and append into it
-    ImGui::Begin("MainMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground);
+    ImGui::Begin("MainMenu", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-    if (ImGui::Button("Story mode game"))
+    ImGui::Image((void*) mLogo->GetTexture(), ImVec2(mLogo->GetWidth(), mLogo->GetHeight()));
+
+    ImGui::Dummy(ImVec2(0.0f, 50.0f));
+
+    if (ImGui::Button("Jouer", ImVec2(80, 40)))
     {
         SwitchToScene(SCENE_STORY_MODE);
     }
 
-    if (ImGui::Button("Start local game"))
-    {
-        SwitchToScene(SCENE_LOCAL_GAME);
-    }
-
-    if (ImGui::Button("Online game"))
-    {
-        mLogo->SetVisible(false);
-        mMenu = MENU_ONLINE;
-    }
-
-    if (ImGui::Button("AI Editor"))
-    {
-        SwitchToScene(SCENE_AI_EDITOR);
-    }
-
-    if (ImGui::Button("Quit"))
+    if (ImGui::Button("Quitter", ImVec2(80, 40)))
     {
         SwitchToScene(SCENE_EXIT);
     }
+
     ImGui::End();
 }
 
