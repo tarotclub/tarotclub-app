@@ -7,8 +7,6 @@
 #include <memory>
 #include "gfx-engine.h"
 #include "i-board-event.h"
-#include "PlayerContext.h"
-#include "board-hud.h"
 #include "DataBase.h"
 
 class Car : public Entity
@@ -76,6 +74,21 @@ private:
 
 };
 
+class City : public Image
+{
+
+public:
+    City(GfxSystem &s)
+        : Image(s, "assets/story/city.png")
+    {
+
+    }
+
+    double lon, lat;
+private:
+
+};
+
 class Velo : public Image
 {
 
@@ -112,10 +125,28 @@ private:
     double lon, lat;
     SDL_Point city;
 
+    double west;
+    double east;
+    double south;
+    double north;
+    double ymin;
+    double ymax;
+
+    double xFactor{1.0};
+    double yFactor{1.0};
+
     std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
     std::shared_ptr<DenisHead> m_head;
     std::shared_ptr<Velo> m_velo;
+
+    std::shared_ptr<Text> m_questsTitle;
+
+    std::vector<std::shared_ptr<City>> m_cities;
+    void GeneratePath();
+    SDL_Point GpsToPoint(double lon, double lat);
+    void DrawQuestsMenu();
+    void DrawToolBar();
 };
 
 #endif // STORYMODESCENE_H

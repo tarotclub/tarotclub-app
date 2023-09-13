@@ -125,6 +125,8 @@ TitleScene::TitleScene(GfxSystem &system, IApplication &app, const std::string &
     auto bg = std::make_shared<Background>(GetSystem());
     mLogo = std::make_shared<Logo>(GetSystem());
 
+    mLogo->SetVisible(false);
+
     AddEntity(bg);
     AddEntity(mLogo);
 

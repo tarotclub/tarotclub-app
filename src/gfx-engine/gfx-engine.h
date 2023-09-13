@@ -3,6 +3,7 @@
 
 // SDL
 #include <SDL2/SDL.h>
+#include "SDL2/SDL_ttf.h"
 
 // Dear ImGui
 #include "imgui_impl_sdl.h"
@@ -21,9 +22,175 @@
 // ICL
 #include "Value.h"
 
-// Gfx-Engine
-#include "entity.h"
-#include "image.h"
+#include <iostream>
+#include <string>
+
+
+class GfxSystem;
+
+struct Vector2f
+{
+    Vector2f()
+        :x(0.0f), y(0.0f)
+    {}
+
+    Vector2f(float p_x, float p_y)
+        :x(p_x), y(p_y)
+    {}
+
+    void print()
+    {
+        std::cout << x << ", " << y << std::endl;
+    }
+
+    float x, y;
+};
+
+struct Vector2
+{
+    Vector2()
+        : x(0)
+        , y(0)
+    {}
+
+    Vector2(int p_x, int p_y)
+        : x(p_x)
+        , y(p_y)
+    {}
+
+    void print()
+    {
+        std::cout << x << ", " << y << std::endl;
+    }
+
+    int x, y;
+};
+
+
+struct Rect : Vector2f
+{
+    int w;
+    int h;
+
+    Rect() {
+        w = 0;
+        h = 0;
+    }
+};
+
+
+class Entity
+{
+public:
+    Entity(GfxSystem &s);
+
+    virtual ~Entity() {}
+
+    virtual void OnCreate(SDL_Renderer *renderer) { (void) renderer; }
+
+    // Manage user interaction (mouse, keyboard...)
+    virtual void ProcessEvent(const SDL_Event &event);
+
+    // Update state
+    virtual void Update(double deltaTime);
+
+    // Draw to screen
+    virtual void Draw(SDL_Renderer *renderer);
+
+    bool IsVisible() const;
+
+
+    int GetX() const;
+    int GetY() const;
+    int GetWidth() const;
+    int GetHeight() const;
+    const SDL_Rect &GetRect() const;
+    Vector2f &GetScale();
+    float GetAngle() const;
+    GfxSystem &GetSystem() { return mSystem; }
+
+    void SetVisible(bool visible);
+    void SetPos(int x, int y);
+    void SetSize(int w, int h);
+    void SetScale(float x, float y);
+    void SetAngle(float angle);
+    void SetSceneIdOnwer(uint32_t sceneId);
+    void SetId(uint32_t id);
+    void SetZ(uint32_t z);
+    uint32_t GetZ() const { return mZ; }
+
+private:
+    GfxSystem &mSystem; // keep it first please
+
+    uint32_t mSceneIdOnwer = 0;
+    uint32_t mId = 0;
+    uint32_t mZ = 0; // pseudo Z value (order of drawing)
+
+    bool mVisible = true;
+    SDL_Rect mRect;
+    //   Vector2f mPos;
+    float mAngle = 0;
+    Vector2f mScale = Vector2f(1, 1);
+};
+
+
+class Image : public Entity
+{
+
+public:
+    enum Type {
+        IMG_RASTER,
+        IMG_SVG,
+        IMG_TEXT
+    };
+
+    Image(GfxSystem &system, const std::string &path, Type type = IMG_RASTER);
+
+    virtual ~Image();
+
+    virtual void OnCreate(SDL_Renderer *renderer) override;
+    virtual void Draw(SDL_Renderer *renderer) override;
+
+    void DrawEx(SDL_Renderer *renderer, int x, int y);
+    void SetHighlight(bool enable) { mHighlight = enable; }
+    bool IsHighlighted() const { return mHighlight; }
+
+    SDL_Texture *GetTexture() const { return mTexture; }
+    void SetTexture(SDL_Texture *tex) { mTexture = tex; }
+
+    std::string GetPath() const { return mPath; }
+
+    static SDL_Texture *LoadSVG(SDL_Renderer *renderer, const char *filename);
+    static SDL_Texture *RenderSVG(SDL_Renderer *renderer, const std::string &svgData);
+    static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);
+    static SDL_Texture *CreateText(SDL_Renderer *renderer, const char *fontfile, const char *text, int pixelsize);
+
+private:
+    std::string mPath;
+    Image::Type m_type{IMG_RASTER};
+    SDL_Texture *mTexture{nullptr};
+    bool mHighlight = false;
+};
+
+class Text : public Entity
+{
+public:
+    Text(GfxSystem &system, const std::string &path, const std::string &text);
+
+    virtual ~Text();
+
+    SDL_Texture *GetTexture() const { return m_texture; }
+
+    virtual void OnCreate(SDL_Renderer *renderer) override;
+
+    virtual void Draw(SDL_Renderer *renderer) override;
+
+private:
+    std::string m_path;
+    std::string m_text;
+    TTF_Font* m_font;
+    SDL_Texture *m_texture{nullptr};
+};
 
 class GfxSystem
 {
@@ -167,6 +334,7 @@ public:
     void AddScene(std::shared_ptr<Scene> scene, uint32_t id);
     void SwitchSceneTo(uint32_t sceneId, const std::map<std::string, Value> &args = std::map<std::string, Value>());
 
+    void PlayAudio(const std::string &filename);
 private:
     uint32_t mWidth = 1152;
     uint32_t mHeight = 648;

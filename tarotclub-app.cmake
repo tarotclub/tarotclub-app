@@ -71,10 +71,6 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/gfx-engine/SDL2_rotozoom.h
     ${TAROT_ROOT}/src/gfx-engine/gfx-engine.cpp
     ${TAROT_ROOT}/src/gfx-engine/gfx-engine.h
-    ${TAROT_ROOT}/src/gfx-engine/entity.h
-    ${TAROT_ROOT}/src/gfx-engine/entity.cpp
-    ${TAROT_ROOT}/src/gfx-engine/image.h
-    ${TAROT_ROOT}/src/gfx-engine/image.cpp
 
     # ----------------  SCENE STORY  ----------------
     ${TAROT_ROOT}/src/story-mode-scene.cpp

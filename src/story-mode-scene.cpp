@@ -1,6 +1,8 @@
 #include "story-mode-scene.h"
 #include "SDL2_gfxPrimitives.h"
 #include "assets.h"
+#include "scenes.h"
+#include "IconsFontAwesome5.h"
 
 #define earthRadiusKm 6371.0
 
@@ -89,7 +91,16 @@ double mercatorY(double lat)
     return log(tan(lat/2 + M_PI/4));
 }
 
+#include <random>
 
+std::random_device rd;
+std::mt19937 gen(rd());
+
+int random(int low, int high)
+{
+    std::uniform_int_distribution<> dist(low, high);
+    return dist(gen);
+}
 
 
 StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
@@ -104,9 +115,127 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     AddEntity(m_map);
     AddEntity(m_velo);
     AddEntity(m_head);
+
+    m_head->SetScale(0.15, 0.15);
+    m_velo->SetScale(0.1, 0.1);
+    m_velo->SetPos(m_head->GetX(), m_head->GetY() + 40);
+
+    m_questsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "QUESTS");
+    m_questsTitle->SetVisible(false);
+   // m_text->SetPos(100, 100);
+    AddEntity(m_questsTitle);
+
+    // Create cities
+    for (int i = 0; i < 10; i++)
+    {
+        auto c = std::make_shared<City>(GetSystem());
+        c->SetScale(0.1, 0.1);
+        AddEntity(c);
+        m_cities.push_back(c);
+    }
+
+
+    west = deg2rad(-4.795555555555556);
+    east = deg2rad(8.230555555555556);
+    south = deg2rad(42.3327778);
+    north = deg2rad(51.0891667);
+    ymin = mercatorY(south);
+    ymax = mercatorY(north);
+
 //    AddEntity(mCar);
 }
 
+
+
+void StoryModeScene::GeneratePath()
+{
+    std::vector<std::vector<Value> > results;
+    std::string ret = mDb.Query("SELECT COUNT(*) FROM communes;", results);
+
+    if (results.size() > 0)
+    {
+        if (results[0].size() == 1)
+        {
+            int nbCities = results[0][0].GetInteger();
+
+            int nb_points = 0;
+            int tries = 0;
+            do
+            {
+                results.clear();
+                int line = random(1, nbCities);
+                std::string ret = mDb.Query("SELECT * FROM communes LIMIT 1 OFFSET " + std::to_string(line) + ";", results);
+
+                if (results.size() > 0)
+                {
+                    if (results[0].size() >= 3)
+                    {
+                        double lon = results[0][1].GetDouble();
+                        double lat = results[0][2].GetDouble();
+                        std::string city = results[0][0].GetString();
+                        std::cout << city << std::endl;
+
+                        // La ville doit être située à au moins 100 kms des autres villes
+                        bool okay = true;
+
+                        for (int i = 0; i < nb_points; i++)
+                        {
+                            auto c = m_cities.at(nb_points);
+                            double distance = distanceEarth(c->lat, c->lon, lon, lat);
+
+                            if (distance < 100)
+                            {
+                                okay = false;
+                            }
+                        }
+
+                        if (okay)
+                        {
+                            auto c = m_cities.at(nb_points);
+
+                            SDL_Point p = GpsToPoint(lon, lat);
+                            c->SetPos(p.x, p.y);
+                            c->lon = lon;
+                            c->lat = lat;
+
+                            nb_points++;
+                        }
+                        else
+                        {
+                            tries++;
+                            if (tries > 100)
+                            {
+                                nb_points = 0; // on recommence
+                            }
+                        }
+                    }
+                }
+
+            } while (nb_points < 10);
+        }
+    }
+}
+
+
+SDL_Point StoryModeScene::GpsToPoint(double lon, double lat)
+{
+    SDL_Point p;
+    double limalongesW = (deg2rad(lon) - west) * xFactor;
+    double limalongesH = (ymax - mercatorY(deg2rad(lat))) * yFactor;
+
+    double franceH = meridien_distance(42.3327778, 51.0891667);
+    limalongesH = meridien_distance(lat, 51.0891667);
+
+    limalongesH = limalongesH * m_map->GetHZoomed() / franceH;
+
+    std::cout << "LIMALONGES W: " << limalongesW << std::endl;
+    std::cout << "LIMALONGES H: " << limalongesH << std::endl;
+
+    p.x = limalongesW;
+    p.y = limalongesH;
+
+    return p;
+}
 
 void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 {
@@ -143,15 +272,8 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
             double distance = distanceEarth(lat, lon, 42.3333333, -4.795555555555556);
             std::cout << "LIMALONGES D: " << distance << std::endl;
 
-            double west = deg2rad(-4.795555555555556);
-            double east = deg2rad(8.230555555555556);
-            double south = deg2rad(42.3327778);
-            double north = deg2rad(51.0891667);
-            double ymin = mercatorY(south);
-            double ymax = mercatorY(north);
-            
-            double xFactor = m_map->GetWZoomed()/(east - west);
-            double yFactor = m_map->GetHZoomed()/(ymax - ymin);
+            xFactor = m_map->GetWZoomed()/(east - west);
+            yFactor = m_map->GetHZoomed()/(ymax - ymin);
 
 //            lon = 0;
             double limalongesW = (deg2rad(lon) - west) * xFactor;
@@ -167,6 +289,9 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 
             city.x = limalongesW;
             city.y = limalongesH;
+
+
+            GeneratePath();
 
 //            city = latLonToOffsets(46.721389, 2.510278, mMap->GetWZoomed(), mMap->GetHZoomed());
             TLogInfo("[STORY] Has results");
@@ -188,6 +313,70 @@ void StoryModeScene::Update(double deltaTime)
     mCar->SetPos(200, 200);
 }
 
+void StoryModeScene::DrawQuestsMenu()
+{
+    // get the window size as a base for calculating widgets geometry
+    int controls_width = 0;
+
+    Rect r = GetSystem().GetWindowSize();
+
+    static const uint32_t width = 200;
+    static const uint32_t margins = 20;
+
+    // position the controls widget in the top-right corner with some margin
+    ImGui::SetNextWindowPos(ImVec2(r.w - width - margins, 45), ImGuiCond_Always);
+    // here we set the calculated width and also make the height to be
+    // be the height of the main window also with some margin
+    ImGui::SetNextWindowSize(
+        ImVec2(static_cast<float>(width), static_cast<float>(340)),
+        ImGuiCond_Always
+        );
+    // create a window and append into it
+    ImGui::Begin("Quests", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+    ImGui::Image((void*) m_questsTitle->GetTexture(), ImVec2(m_questsTitle->GetWidth(), m_questsTitle->GetHeight()));
+
+
+/*
+    if (ImGui::Button("Quitter", ImVec2(80, 40)))
+    {
+        SwitchToScene(SCENE_TITLE);
+    }
+    */
+
+    ImGui::End();
+}
+
+
+void StoryModeScene::DrawToolBar()
+{
+    // get the window size as a base for calculating widgets geometry
+    int controls_width = 0;
+
+    Rect r = GetSystem().GetWindowSize();
+
+    static const uint32_t width = 200;
+    static const uint32_t height = 50;
+
+    // position the controls widget in the top-right corner with some margin
+    ImGui::SetNextWindowPos(ImVec2(r.w - width, r.h - height), ImGuiCond_Always);
+    // here we set the calculated width and also make the height to be
+    // be the height of the main window also with some margin
+    ImGui::SetNextWindowSize(
+        ImVec2(static_cast<float>(width), static_cast<float>(height)),
+        ImGuiCond_Always
+        );
+    // create a window and append into it
+    ImGui::Begin("ToolBar", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+    if (ImGui::Button(ICON_FA_SIGN_OUT_ALT))
+    {
+        SwitchToScene(SCENE_TITLE);
+    }
+
+    ImGui::End();
+}
+
 void StoryModeScene::Draw(SDL_Renderer *renderer)
 {
     SDL_SetRenderDrawColor(renderer,  0xdd, 0xea, 0xfa, 255);
@@ -196,10 +385,13 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
 
     Scene::Draw(renderer);
 
-  //  filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
+    DrawQuestsMenu();
+    DrawToolBar();
+
+//    filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
     
-    vlineRGBA(renderer, city.x + m_map->GetCursorX(), 0, m_map->GetHZoomed(), 255, 0, 0, 255 );
-    hlineRGBA(renderer, 0, m_map->GetWZoomed(), city.y + m_map->GetCursorY(), 255, 0, 0, 255 );
+//    vlineRGBA(renderer, city.x + m_map->GetCursorX(), 0, m_map->GetHZoomed(), 255, 0, 0, 255 );
+//    hlineRGBA(renderer, 0, m_map->GetWZoomed(), city.y + m_map->GetCursorY(), 255, 0, 0, 255 );
 
    // vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
 }
@@ -249,6 +441,8 @@ void FranceMap::ProcessEvent(const SDL_Event &event)
 {
     int xMouse, yMouse;
     uint32_t mask = SDL_GetMouseState(&xMouse,&yMouse);
+
+    /*
     if(event.type == SDL_MOUSEWHEEL)
     {
         if(event.wheel.y > 0) // scroll up
@@ -271,10 +465,11 @@ void FranceMap::ProcessEvent(const SDL_Event &event)
             m_cursor_x = xMouse;
             m_cursor_y = yMouse;
         }
-    }
+    }*/
 
     if (event.type == SDL_MOUSEMOTION)
     {
+        /*
         if ((mask & SDL_BUTTON_LMASK) == SDL_BUTTON_LMASK)
         {
             m_cursor_x += event.motion.xrel;
@@ -301,7 +496,7 @@ void FranceMap::ProcessEvent(const SDL_Event &event)
             }
 
 
-        }
+        }*/
     }
     std::cout << "Zoom: " << m_zoom << " cursor X: " << m_cursor_x << " cursor Y: " << m_cursor_y << std::endl;
 }

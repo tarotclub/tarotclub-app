@@ -17,6 +17,9 @@ set(TAROT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(OpenGL REQUIRED)
 find_package(SDL2 REQUIRED)
 
+find_package(SDL2_ttf REQUIRED)
+
+
 include(${TAROT_ROOT}/tarotclub-app.cmake)
 
 #=========================================================================================================================
@@ -54,7 +57,9 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 #add_compile_options(-fsanitize=undefined,address)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${TAROT_CORE_SRCS})
-target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} OpenGL::GL  pthread ssl crypto dl mbedtls)
+
+
+target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} SDL2_ttf OpenGL::GL  pthread ssl crypto dl mbedtls)
 target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_HEADERS} ${TAROT_INCLUDES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:TAROT_DEBUG>")
