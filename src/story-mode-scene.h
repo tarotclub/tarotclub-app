@@ -78,14 +78,68 @@ class City : public Image
 {
 
 public:
-    City(GfxSystem &s)
-        : Image(s, "assets/story/city.png")
-    {
+    City(GfxSystem &s);
 
+    void SetHovered(bool hovered)
+    {
+        if (hovered != m_hovered)
+        {
+            m_hovered = hovered;
+
+            if (m_hovered)
+            {
+                SetScale(0.2, 0.2);
+                SetPos(m_scaledRect.x, m_scaledRect.y);
+            }
+            else
+            {
+                SetScale(0.1, 0.1);
+                SetPos(m_normalRect.x, m_normalRect.y);
+            }
+        }
     }
+
+    void Place(int x, int y)
+    {
+        // Memorize position in pixels of the GPS point
+        m_x = x;
+        m_y = y;
+
+        // Precompute normal rect, not scaled
+        m_normalRect = GetRect();
+        m_scaledRect = m_normalRect;
+
+        ComputePos(m_normalRect, 0.1, 0.1);
+        ComputePos(m_scaledRect, 0.2, 0.2);
+
+        SetPos(m_normalRect.x, m_normalRect.y);
+    }
+
+    void ComputePos(SDL_Rect &rect, float scale_x, float scale_y)
+    {
+        // Compute real position, center City on the position
+        rect.w *= scale_x;
+        rect.h *= scale_y;
+
+        rect.x = m_x - rect.w / 2;
+        rect.y = m_y - rect.h / 2;
+    }
+
+    virtual void OnCreate(SDL_Renderer *renderer) override;
+
+    virtual void ProcessEvent(const SDL_Event &event) override;
+
+    virtual void Update(double deltaTime) override;
+
+    virtual void Draw(SDL_Renderer *renderer) override;
 
     double lon, lat;
 private:
+
+    int m_x, m_y;
+    SDL_Rect m_normalRect;
+    SDL_Rect m_scaledRect;
+    bool m_hovered{false};
 
 };
 
@@ -147,6 +201,7 @@ private:
     SDL_Point GpsToPoint(double lon, double lat);
     void DrawQuestsMenu();
     void DrawToolBar();
+    void DrawInfosMenu();
 };
 
 #endif // STORYMODESCENE_H

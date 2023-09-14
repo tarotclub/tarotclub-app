@@ -129,7 +129,6 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     for (int i = 0; i < 10; i++)
     {
         auto c = std::make_shared<City>(GetSystem());
-        c->SetScale(0.1, 0.1);
         AddEntity(c);
         m_cities.push_back(c);
     }
@@ -194,7 +193,7 @@ void StoryModeScene::GeneratePath()
                             auto c = m_cities.at(nb_points);
 
                             SDL_Point p = GpsToPoint(lon, lat);
-                            c->SetPos(p.x, p.y);
+                            c->Place(p.x, p.y);
                             c->lon = lon;
                             c->lat = lat;
 
@@ -310,7 +309,8 @@ void StoryModeScene::OnActivate(SDL_Renderer *renderer, const std::map<std::stri
 
 void StoryModeScene::Update(double deltaTime)
 {
-    mCar->SetPos(200, 200);
+    Scene::Update(deltaTime);
+  //  mCar->SetPos(200, 200);
 }
 
 void StoryModeScene::DrawQuestsMenu()
@@ -320,15 +320,15 @@ void StoryModeScene::DrawQuestsMenu()
 
     Rect r = GetSystem().GetWindowSize();
 
-    static const uint32_t width = 200;
+    static const uint32_t width = 400;
     static const uint32_t margins = 20;
 
     // position the controls widget in the top-right corner with some margin
-    ImGui::SetNextWindowPos(ImVec2(r.w - width - margins, 45), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(r.w - width - margins, margins), ImGuiCond_Always);
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(width), static_cast<float>(340)),
+        ImVec2(static_cast<float>(width), static_cast<float>(200)),
         ImGuiCond_Always
         );
     // create a window and append into it
@@ -347,6 +347,41 @@ void StoryModeScene::DrawQuestsMenu()
     ImGui::End();
 }
 
+void StoryModeScene::DrawInfosMenu()
+{
+    // get the window size as a base for calculating widgets geometry
+    int controls_width = 0;
+
+    Rect r = GetSystem().GetWindowSize();
+
+    static const uint32_t width = 400;
+    static const uint32_t margins = 20;
+
+    // position the controls widget in the top-right corner with some margin
+    ImGui::SetNextWindowPos(ImVec2(r.w - width - margins, 240), ImGuiCond_Always);
+    // here we set the calculated width and also make the height to be
+    // be the height of the main window also with some margin
+    ImGui::SetNextWindowSize(
+        ImVec2(static_cast<float>(width), static_cast<float>(200)),
+        ImGuiCond_Always
+        );
+    // create a window and append into it
+    ImGui::Begin("Infos", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+    ImGui::Image((void*) m_questsTitle->GetTexture(), ImVec2(m_questsTitle->GetWidth(), m_questsTitle->GetHeight()));
+
+
+    /*
+    if (ImGui::Button("Quitter", ImVec2(80, 40)))
+    {
+        SwitchToScene(SCENE_TITLE);
+    }
+    */
+
+    ImGui::End();
+}
+
+
 
 void StoryModeScene::DrawToolBar()
 {
@@ -356,7 +391,7 @@ void StoryModeScene::DrawToolBar()
     Rect r = GetSystem().GetWindowSize();
 
     static const uint32_t width = 200;
-    static const uint32_t height = 50;
+    static const uint32_t height = 45;
 
     // position the controls widget in the top-right corner with some margin
     ImGui::SetNextWindowPos(ImVec2(r.w - width, r.h - height), ImGuiCond_Always);
@@ -386,6 +421,7 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
     Scene::Draw(renderer);
 
     DrawQuestsMenu();
+    DrawInfosMenu();
     DrawToolBar();
 
 //    filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
@@ -541,4 +577,47 @@ void Car::Draw(SDL_Renderer *renderer)
     SDL_SetTextureBlendMode(mTexture, SDL_BLENDMODE_BLEND);
     SDL_SetTextureColorMod(mTexture, 255, 255, 255);
     SDL_RenderCopyEx(renderer, mTexture, NULL, &GetRect(), GetAngle(), NULL, SDL_FLIP_NONE);
+}
+
+City::City(GfxSystem &s)
+    : Image(s, "assets/story/city.png")
+{
+
+}
+
+void City::OnCreate(SDL_Renderer *renderer)
+{
+    Image::OnCreate(renderer);
+
+    SetScale(0.1, 0.1);
+}
+
+void City::ProcessEvent(const SDL_Event &event)
+{
+    SDL_Point mousePos;
+
+    if (event.type == SDL_MOUSEMOTION)
+    {
+        mousePos.x = event.motion.x;
+        mousePos.y = event.motion.y;
+
+
+        SetHovered(false);
+
+        if (SDL_PointInRect(&mousePos, &m_scaledRect))
+        {
+            SetHovered(true);
+        }
+    }
+
+}
+
+void City::Update(double deltaTime)
+{
+    Image::Update(deltaTime);
+}
+
+void City::Draw(SDL_Renderer *renderer)
+{
+    Image::Draw(renderer);
 }

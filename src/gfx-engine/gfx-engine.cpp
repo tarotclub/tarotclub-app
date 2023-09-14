@@ -65,8 +65,8 @@ int Entity::GetHeight() const
     return mRect.h;
 }
 
-const SDL_Rect &Entity::GetRect() const
-{
+const SDL_Rect &Entity::GetRect() const {
+
     return mRect;
 }
 

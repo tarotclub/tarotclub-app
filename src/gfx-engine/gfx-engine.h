@@ -128,6 +128,7 @@ private:
 
     bool mVisible = true;
     SDL_Rect mRect;
+
     //   Vector2f mPos;
     float mAngle = 0;
     Vector2f mScale = Vector2f(1, 1);
