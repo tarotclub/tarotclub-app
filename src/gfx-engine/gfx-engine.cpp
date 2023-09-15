@@ -43,6 +43,16 @@ void Entity::Draw(SDL_Renderer *renderer) { (void) renderer; }
 
 bool Entity::IsVisible() const { return mVisible; }
 
+std::vector<std::shared_ptr<Entity> > Entity::GetChilds() const
+{
+    return m_childs;
+}
+
+void Entity::AddChildEntity(std::shared_ptr<Entity> e)
+{
+    m_childs.push_back(e);
+}
+
 void Entity::SetVisible(bool visible) { mVisible = visible; }
 
 int Entity::GetX() const
@@ -333,8 +343,9 @@ void Text::OnCreate(SDL_Renderer *renderer)
         // handle error
     }
 
-    SDL_Color color = { 0, 0, 0 };
-    SDL_Surface * surface = TTF_RenderText_Solid(m_font, m_text.c_str(), color);
+    SDL_Color colorbg = { 0, 0, 0 };
+    SDL_Color colorfg = { 255, 255, 255 };
+    SDL_Surface * surface = TTF_RenderText_Blended(m_font, m_text.c_str(), colorbg);
 
     m_texture = (SDL_CreateTextureFromSurface(renderer, surface));
 
@@ -682,3 +693,18 @@ void GfxEngine::Close()
 }
 
 
+
+uint32_t Scene::AddEntity(std::shared_ptr<Entity> entity) {
+    uint32_t id = mEntityIds;
+    entity->SetId(id);
+    mEntities.push_back(entity);
+    mEntityIds++;
+
+    // Add Child entities
+    for (auto &c : entity->GetChilds())
+    {
+        AddEntity(c);
+    }
+
+    return id;
+}

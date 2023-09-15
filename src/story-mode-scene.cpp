@@ -122,13 +122,20 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
 
     m_questsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "QUESTS");
     m_questsTitle->SetVisible(false);
-   // m_text->SetPos(100, 100);
     AddEntity(m_questsTitle);
+
+    m_infosTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "INFOS");
+    m_infosTitle->SetVisible(false);
+    AddEntity(m_infosTitle);
+
+    m_ivan = std::make_shared<Image>(GetSystem(), "assets/story/portrait_ivan.png");
+    m_ivan->SetVisible(false);
+    AddEntity(m_ivan);
 
     // Create cities
     for (int i = 0; i < 10; i++)
     {
-        auto c = std::make_shared<City>(GetSystem());
+        auto c = std::make_shared<City>(GetSystem(), *this, i);
         AddEntity(c);
         m_cities.push_back(c);
     }
@@ -194,6 +201,7 @@ void StoryModeScene::GeneratePath()
 
                             SDL_Point p = GpsToPoint(lon, lat);
                             c->Place(p.x, p.y);
+                            c->SetName(city);
                             c->lon = lon;
                             c->lat = lat;
 
@@ -368,9 +376,11 @@ void StoryModeScene::DrawInfosMenu()
     // create a window and append into it
     ImGui::Begin("Infos", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-    ImGui::Image((void*) m_questsTitle->GetTexture(), ImVec2(m_questsTitle->GetWidth(), m_questsTitle->GetHeight()));
+    ImGui::Image((void*) m_infosTitle->GetTexture(), ImVec2(m_infosTitle->GetWidth(), m_infosTitle->GetHeight()));
 
+    ImGui::NewLine();
 
+    ImGui::Text("Sélection: %s", m_currentSelection.c_str());
     /*
     if (ImGui::Button("Quitter", ImVec2(80, 40)))
     {
@@ -412,6 +422,61 @@ void StoryModeScene::DrawToolBar()
     ImGui::End();
 }
 
+void StoryModeScene::DrawPopupEvent()
+{
+    // get the window size as a base for calculating widgets geometry
+    int controls_width = 0;
+
+    Rect r = GetSystem().GetWindowSize();
+
+    static const uint32_t width = 400;
+    static const uint32_t margins = 20;
+
+    if (m_showPopup)
+    {
+        ImGui::OpenPopup("Évènement !");
+    }
+
+    if (ImGui::BeginPopupModal("Évènement !", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Image((void*) m_ivan->GetTexture(), ImVec2(m_ivan->GetWidth(), m_ivan->GetHeight()));
+
+        ImGui::Text("Denis, nous avons besoin de toi ! Presstalis est en redressement judiciaire, ils ne distribuent que Valeurs Actuelles.\n"
+                    "Ta mission sera de distribuer CanardPC aux abonnés. Débrouille toi, il faut terminer avant le 15 du mois !");
+        ImGui::Separator();
+
+        //static int unused_i = 0;
+        //ImGui::Combo("Combo", &unused_i, "Delete\0Delete harder\0");
+
+
+        if (ImGui::Button("OK", ImVec2(120, 0))) { m_showPopup = false; ImGui::CloseCurrentPopup(); }
+        ImGui::SetItemDefaultFocus();
+//        ImGui::SameLine();
+//        if (ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+        ImGui::EndPopup();
+    }
+/*
+
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 pos(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+                             | ImGuiWindowFlags_NoDecoration
+                             | ImGuiWindowFlags_AlwaysAutoResize
+                             | ImGuiWindowFlags_NoSavedSettings;
+
+
+    if (ImGui::Begin("Popup", nullptr, flags))
+    {
+        ImGui::Text("Coucou");
+        ImGui::End();
+    }
+*/
+}
+
+
+
 void StoryModeScene::Draw(SDL_Renderer *renderer)
 {
     SDL_SetRenderDrawColor(renderer,  0xdd, 0xea, 0xfa, 255);
@@ -423,6 +488,7 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
     DrawQuestsMenu();
     DrawInfosMenu();
     DrawToolBar();
+    DrawPopupEvent();
 
 //    filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
     
@@ -435,6 +501,19 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
 void StoryModeScene::ProcessEvent(const SDL_Event &event)
 {
     Scene::ProcessEvent(event);
+}
+
+void StoryModeScene::SelectCity(int id)
+{
+    for (auto c : m_cities)
+    {
+        c->SetSelected(c->GetId() == id);
+
+        if (c->GetId() == id)
+        {
+            m_currentSelection = c->GetCityName();
+        }
+    }
 }
 
 SDL_Rect world = {0, 0, 1728, 972};
@@ -579,10 +658,14 @@ void Car::Draw(SDL_Renderer *renderer)
     SDL_RenderCopyEx(renderer, mTexture, NULL, &GetRect(), GetAngle(), NULL, SDL_FLIP_NONE);
 }
 
-City::City(GfxSystem &s)
+City::City(GfxSystem &s, IFranceEvent &ev, int id)
     : Image(s, "assets/story/city.png")
+    , m_ev(ev)
+    , m_id(id)
 {
-
+    m_selection = std::make_shared<Image>(GetSystem(), "assets/story/selection.png");
+    m_selection->SetVisible(false);
+    AddChildEntity(m_selection);
 }
 
 void City::OnCreate(SDL_Renderer *renderer)
@@ -595,18 +678,26 @@ void City::OnCreate(SDL_Renderer *renderer)
 void City::ProcessEvent(const SDL_Event &event)
 {
     SDL_Point mousePos;
+    mousePos.x = event.motion.x;
+    mousePos.y = event.motion.y;
 
     if (event.type == SDL_MOUSEMOTION)
     {
-        mousePos.x = event.motion.x;
-        mousePos.y = event.motion.y;
-
-
         SetHovered(false);
 
         if (SDL_PointInRect(&mousePos, &m_scaledRect))
         {
             SetHovered(true);
+        }
+    }
+    if (event.type == SDL_MOUSEBUTTONUP)
+    {      
+        if (event.button.button == SDL_BUTTON_LEFT)
+        {
+            if (SDL_PointInRect(&mousePos, &m_scaledRect))
+            {
+                m_ev.SelectCity(m_id);
+            }
         }
     }
 

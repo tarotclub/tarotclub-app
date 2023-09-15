@@ -99,6 +99,9 @@ public:
 
     bool IsVisible() const;
 
+    std::vector<std::shared_ptr<Entity>> GetChilds() const;
+
+    void AddChildEntity(std::shared_ptr<Entity> e);
 
     int GetX() const;
     int GetY() const;
@@ -121,6 +124,8 @@ public:
 
 private:
     GfxSystem &mSystem; // keep it first please
+
+    std::vector<std::shared_ptr<Entity>> m_childs;
 
     uint32_t mSceneIdOnwer = 0;
     uint32_t mId = 0;
@@ -265,13 +270,7 @@ public:
         (void) message;
     }
 
-    uint32_t AddEntity(std::shared_ptr<Entity> entity) {
-        uint32_t id = mEntityIds;
-        entity->SetId(id);
-        mEntities.push_back(entity);
-        mEntityIds++;
-        return id;
-    }
+    uint32_t AddEntity(std::shared_ptr<Entity> entity);
 
     GfxSystem &GetSystem() { return mSystem; }
 

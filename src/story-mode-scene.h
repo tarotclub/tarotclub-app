@@ -9,6 +9,14 @@
 #include "i-board-event.h"
 #include "DataBase.h"
 
+class IFranceEvent
+{
+public:
+    virtual  ~IFranceEvent() {}
+    virtual void SelectCity(int id) = 0;
+
+};
+
 class Car : public Entity
 {
 public:
@@ -78,7 +86,9 @@ class City : public Image
 {
 
 public:
-    City(GfxSystem &s);
+    City(GfxSystem &s, IFranceEvent &ev, int id);
+
+    int GetId() const { return m_id; }
 
     void SetHovered(bool hovered)
     {
@@ -99,6 +109,20 @@ public:
         }
     }
 
+    void SetSelected(bool selected)
+    {
+        m_selected = selected;
+        m_selection->SetVisible(selected);
+    }
+
+    void SetName(const std::string &name) {
+        m_name = name;
+    }
+
+    std::string GetCityName() const  {
+        return m_name;
+    }
+
     void Place(int x, int y)
     {
         // Memorize position in pixels of the GPS point
@@ -113,6 +137,13 @@ public:
         ComputePos(m_scaledRect, 0.2, 0.2);
 
         SetPos(m_normalRect.x, m_normalRect.y);
+
+        // Place selection square
+
+        SDL_Rect r = m_selection->GetRect();
+        ComputePos(r, 0.3, 0.3);
+        m_selection->SetScale(0.3, 0.3);
+        m_selection->SetPos(r.x, r.y);
     }
 
     void ComputePos(SDL_Rect &rect, float scale_x, float scale_y)
@@ -136,10 +167,17 @@ public:
     double lon, lat;
 private:
 
+    std::shared_ptr<Image> m_selection;
+    IFranceEvent &m_ev;
+    int m_id{0};
     int m_x, m_y;
     SDL_Rect m_normalRect;
     SDL_Rect m_scaledRect;
     bool m_hovered{false};
+    bool m_selected{false};
+    std::string m_name;
+
+    int m_magazines{100};
 
 };
 
@@ -156,7 +194,7 @@ private:
 
 };
 
-class StoryModeScene : public Scene
+class StoryModeScene : public Scene, public IFranceEvent
 {
 public:
     StoryModeScene(GfxSystem &system, IBoardEvent &event);
@@ -170,6 +208,9 @@ public:
     virtual void Draw(SDL_Renderer *renderer) override;
 
     virtual void ProcessEvent(const SDL_Event &event) override;
+
+    // From IFranceEvent
+    virtual void SelectCity(int id);
 
 private:
     IBoardEvent &mEvent;
@@ -189,12 +230,19 @@ private:
     double xFactor{1.0};
     double yFactor{1.0};
 
+    bool m_showPopup{true};
+
     std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
     std::shared_ptr<DenisHead> m_head;
     std::shared_ptr<Velo> m_velo;
 
+    std::shared_ptr<Image> m_ivan;
+
     std::shared_ptr<Text> m_questsTitle;
+    std::shared_ptr<Text> m_infosTitle;
+
+    std::string m_currentSelection{"-"};
 
     std::vector<std::shared_ptr<City>> m_cities;
     void GeneratePath();
@@ -202,6 +250,7 @@ private:
     void DrawQuestsMenu();
     void DrawToolBar();
     void DrawInfosMenu();
+    void DrawPopupEvent();
 };
 
 #endif // STORYMODESCENE_H
