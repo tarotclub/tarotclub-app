@@ -400,6 +400,73 @@ Rect GfxSystem::GetWindowSize()
     return rect;
 }
 
+#define FONT_TEXTURE_SIZE 512
+
+void GfxSystem::InitFont(int fontType, const std::string  &filename, int font_size)
+{
+//    memset(&glyphs[fontType], 0, sizeof(SDL_Rect) * NUM_GLYPHS);
+
+    auto font = TTF_OpenFont(filename.c_str(), font_size);
+
+    std::map<char, Glyph> atlas;
+
+    for (char c = ' ' ; c <= 'z' ; c++)
+    {
+        Glyph g;
+
+        SDL_Color colorbg = { 0, 0, 0, 0 };
+        SDL_Color colorfg = { 255, 255, 255, 0xFF };
+        SDL_Surface * surface = TTF_RenderGlyph32_Shaded(font, c, colorfg, colorbg);
+
+        g.tex = (SDL_CreateTextureFromSurface(GetRenderer(), surface));
+
+        int w = 0;
+        int h = 0;
+        // get the width and height of the texture
+        if (SDL_QueryTexture(g.tex, NULL, NULL, &w, &h) == 0)
+        {
+            g.rect.w = w;
+            g.rect.h = h;
+        }
+
+        SDL_FreeSurface(surface);
+
+        atlas[c] = g;
+    }
+
+    m_atlas[fontType] = atlas;
+
+    TTF_CloseFont(font);
+}
+
+
+void GfxSystem::DrawText(const std::string &text, int x, int y, int r, int g, int b, int fontType)
+{
+    char c;
+    SDL_Rect dest;
+
+    int i = 0;
+
+    c = text[i++];
+
+    while (c)
+    {
+        auto g = m_atlas.at(fontType).at(c);
+
+        dest.x = x;
+        dest.y = y;
+        dest.w = g.rect.w;
+        dest.h = g.rect.h;
+
+        SDL_RenderCopy(GetRenderer(), g.tex, nullptr, &dest);
+
+        x += g.rect.w;
+
+        c = text[i++];
+    }
+}
+
+
 bool GfxEngine::Initialize(const std::string &window_title)
 {
     // initiate SDL
@@ -521,8 +588,8 @@ bool GfxEngine::Initialize(const std::string &window_title)
     colors[ImGuiCol_NavHighlight]           = colors[ImGuiCol_HeaderHovered];
     colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
 
-    // Setup renderer    
-    mRenderer =  SDL_CreateRenderer( mWindow, -1, SDL_RENDERER_ACCELERATED);
+    // Setup renderer
+    mRenderer =  SDL_CreateRenderer( mWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     // setup platform/renderer bindings
     ImGui_ImplSDL2_InitForSDLRenderer(mWindow);
@@ -539,21 +606,22 @@ bool GfxEngine::Initialize(const std::string &window_title)
 
 void GfxEngine::Warmup()
 {
-   currentTick = SDL_GetPerformanceCounter();
+   lastTick = SDL_GetPerformanceCounter();
 
    for (auto &s : mScenes)
    {
        s.second->OnCreate(mRenderer);
    }
 
+
+    nextFrame = SDL_GetPerformanceCounter(), nextSecond = nextFrame;
+   fps = 0;
 }
 
 
 uint32_t GfxEngine::Process(const Message &msg)
 {
     uint32_t nextScene = 0;
-
-    SDL_RenderClear(mRenderer);
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -583,6 +651,9 @@ uint32_t GfxEngine::Process(const Message &msg)
                 //           << windowHeight
                 //           << std::endl;
                 break;
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+                nextFrame = SDL_GetPerformanceCounter();
+                break;
             }
             break;
         }
@@ -594,11 +665,6 @@ uint32_t GfxEngine::Process(const Message &msg)
         }
     }
 
-    // start the Dear ImGui frame
-    ImGui_ImplSDLRenderer_NewFrame();
-    ImGui_ImplSDL2_NewFrame(mWindow);
-    ImGui::NewFrame();
-
     if (mScenes.count(mCurrentSceneId))
     {
         auto s = mScenes.at(mCurrentSceneId);
@@ -608,17 +674,46 @@ uint32_t GfxEngine::Process(const Message &msg)
             s->OnActivate(mRenderer, mArgs);
         }
 
-        lastTick = currentTick;
-        currentTick = SDL_GetPerformanceCounter();
-        deltaTime = (double)((currentTick - lastTick)*1000 / (double)SDL_GetPerformanceFrequency() );
-
         if (msg.size() > 0)
         {
             s->OnMessage(msg);
         }
 
-        s->Update(deltaTime);
+        currentTick = SDL_GetPerformanceCounter();
+        deltaTime = (double)((currentTick - lastTick)*1000 / (double)SDL_GetPerformanceFrequency() );
+
+
+     //   while (lastTick < currentTick){
+            lastTick += 16; //Timeslice is ALWAYS 16ms.
+            s->Update(16);
+     //   }
+
+        fps++;
+
+        if (SDL_GetPerformanceCounter() >= nextSecond) {
+
+            fpsStr = "Current FPS: " + std::to_string(fps);
+            fps = 0;
+            nextSecond += SDL_GetPerformanceFrequency();
+        }
+
+        SDL_RenderClear(mRenderer);
+
+        // start the Dear ImGui frame
+        ImGui_ImplSDLRenderer_NewFrame();
+        ImGui_ImplSDL2_NewFrame(mWindow);
+        ImGui::NewFrame();
+
         s->Draw(mRenderer);
+
+        ImDrawList* dl = ImGui::GetForegroundDrawList();
+        dl->AddText(ImVec2{0, 0}, IM_COL32_BLACK, fpsStr.c_str(), nullptr);
+
+
+        // rendering
+        ImGui::Render();
+        ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+        SDL_RenderPresent(mRenderer);
 
         nextScene = s->GetNextScene();
         if (nextScene > 0)
@@ -631,10 +726,6 @@ uint32_t GfxEngine::Process(const Message &msg)
         // FIXME: log error
     }
 
-    // rendering
-    ImGui::Render();
-    ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
-    SDL_RenderPresent(mRenderer);
 
     return nextScene;
 }

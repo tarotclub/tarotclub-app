@@ -118,9 +118,8 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
 
     m_head->SetScale(0.15, 0.15);
     m_velo->SetScale(0.1, 0.1);
-    m_velo->SetPos(m_head->GetX(), m_head->GetY() + 40);
 
-    m_questsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "QUESTS");
+    m_questsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "QUETES");
     m_questsTitle->SetVisible(false);
     AddEntity(m_questsTitle);
 
@@ -131,6 +130,9 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     m_ivan = std::make_shared<Image>(GetSystem(), "assets/story/portrait_ivan.png");
     m_ivan->SetVisible(false);
     AddEntity(m_ivan);
+
+    GetSystem().InitFont(0, "assets/fonts/roboto.ttf", 20);
+
 
     // Create cities
     for (int i = 0; i < 10; i++)
@@ -187,9 +189,10 @@ void StoryModeScene::GeneratePath()
                         for (int i = 0; i < nb_points; i++)
                         {
                             auto c = m_cities.at(nb_points);
-                            double distance = distanceEarth(c->lat, c->lon, lon, lat);
+                            double distance = distanceEarth(c->lat, c->lon, lat, lon);
 
-                            if (distance < 100)
+                            std::cout << "Distance: " << distance << std::endl;
+                            if (distance < 200)
                             {
                                 okay = false;
                             }
@@ -205,6 +208,8 @@ void StoryModeScene::GeneratePath()
                             c->lon = lon;
                             c->lat = lat;
 
+                            c->Initialize();
+
                             nb_points++;
                         }
                         else
@@ -219,6 +224,10 @@ void StoryModeScene::GeneratePath()
                 }
 
             } while (nb_points < 10);
+
+            // On Place le Denis sur la première ville
+            auto c = m_cities.at(0);
+            c->SetDenisInCity(true);
         }
     }
 }
@@ -313,12 +322,28 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 void StoryModeScene::OnActivate(SDL_Renderer *renderer, const std::map<std::string, Value> &args)
 {
     Scene::OnActivate(renderer, args);
+
+    GeneratePath();
+
+    m_quests.clear();
+    m_quests.push_back(std::make_shared<MainQuest>(*this, "Distribuez tous les magazines"));
 }
 
 void StoryModeScene::Update(double deltaTime)
 {
     Scene::Update(deltaTime);
   //  mCar->SetPos(200, 200);
+
+    for (auto &c : m_cities)
+    {
+        if (c->IsDenisHere())
+        {
+            m_head->SetPos(c->GetX(), c->GetY());
+        }
+    }
+
+
+    m_velo->SetPos(m_head->GetX(), m_head->GetY() + 40);
 }
 
 void StoryModeScene::DrawQuestsMenu()
@@ -344,7 +369,27 @@ void StoryModeScene::DrawQuestsMenu()
 
     ImGui::Image((void*) m_questsTitle->GetTexture(), ImVec2(m_questsTitle->GetWidth(), m_questsTitle->GetHeight()));
 
+    static ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_ContextMenuInBody;
 
+    if (ImGui::BeginTable("table_quests", 3, flags))
+    {
+        ImGui::TableSetupColumn("Quête", ImGuiTableColumnFlags_WidthFixed, 150); // Default to 100.0f
+        ImGui::TableSetupColumn("État", ImGuiTableColumnFlags_WidthFixed, 60); // Default to 200.0f
+        ImGui::TableSetupColumn("Jours restants", ImGuiTableColumnFlags_WidthStretch);       // Default to auto
+        ImGui::TableHeadersRow();
+        for (auto &c : m_quests)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextWrapped("%s", c->GetDescription().c_str());
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%s", c->GetFinished() ? "Terminé" : "En cours");
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%d", c->GetDaysLeft());
+
+        }
+        ImGui::EndTable();
+    }
 /*
     if (ImGui::Button("Quitter", ImVec2(80, 40)))
     {
@@ -380,7 +425,19 @@ void StoryModeScene::DrawInfosMenu()
 
     ImGui::NewLine();
 
-    ImGui::Text("Sélection: %s", m_currentSelection.c_str());
+    ImGui::Text("Sélection : %s", m_currentSelection.c_str());
+    ImGui::Text("Jour : %d/15", m_currentDay);
+    ImGui::Text("Distance : %f", m_distanceVoyage);
+    ImGui::Text("Temps de voyage : %d", m_currentDay);
+
+    if (m_currentSelection != "-")
+    {
+        if (ImGui::Button("Pédaler ici"))
+        {
+            // TODO
+        }
+    }
+
     /*
     if (ImGui::Button("Quitter", ImVec2(80, 40)))
     {
@@ -483,19 +540,16 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
     // Clear the entire screen to our selected color.
     SDL_RenderClear(renderer);
 
-    Scene::Draw(renderer);
+    Scene::Draw(renderer);  
+
 
     DrawQuestsMenu();
     DrawInfosMenu();
     DrawToolBar();
     DrawPopupEvent();
 
-//    filledCircleRGBA(renderer, city.x , city.y, 6, 255, 0, 0, 255);
-    
-//    vlineRGBA(renderer, city.x + m_map->GetCursorX(), 0, m_map->GetHZoomed(), 255, 0, 0, 255 );
-//    hlineRGBA(renderer, 0, m_map->GetWZoomed(), city.y + m_map->GetCursorY(), 255, 0, 0, 255 );
 
-   // vlineRGBA(renderer, mMap->GetWZoomed(), 0, mMap->GetHZoomed(), 255, 0, 0, 255 );
+
 }
 
 void StoryModeScene::ProcessEvent(const SDL_Event &event)
@@ -505,6 +559,7 @@ void StoryModeScene::ProcessEvent(const SDL_Event &event)
 
 void StoryModeScene::SelectCity(int id)
 {
+    std::shared_ptr<City> citySel;
     for (auto c : m_cities)
     {
         c->SetSelected(c->GetId() == id);
@@ -512,8 +567,32 @@ void StoryModeScene::SelectCity(int id)
         if (c->GetId() == id)
         {
             m_currentSelection = c->GetCityName();
+            citySel = c;
         }
     }
+
+    if (citySel)
+    {
+        for (auto c : m_cities)
+        {
+            if (c->IsDenisHere())
+            {
+                m_distanceVoyage = distanceEarth(c->lat, c->lon, citySel->lat, citySel->lon);
+            }
+        }
+
+
+    }
+}
+
+int StoryModeScene::GetTotalMagazines() const
+{
+    int total = 0;
+    for (auto &c : m_cities)
+    {
+        total += c->GetMagazines();
+    }
+    return total;
 }
 
 SDL_Rect world = {0, 0, 1728, 972};
@@ -658,7 +737,7 @@ void Car::Draw(SDL_Renderer *renderer)
     SDL_RenderCopyEx(renderer, mTexture, NULL, &GetRect(), GetAngle(), NULL, SDL_FLIP_NONE);
 }
 
-City::City(GfxSystem &s, IFranceEvent &ev, int id)
+City::City(GfxSystem &s, IFranceObject &ev, int id)
     : Image(s, "assets/story/city.png")
     , m_ev(ev)
     , m_id(id)
@@ -666,6 +745,11 @@ City::City(GfxSystem &s, IFranceEvent &ev, int id)
     m_selection = std::make_shared<Image>(GetSystem(), "assets/story/selection.png");
     m_selection->SetVisible(false);
     AddChildEntity(m_selection);
+}
+
+void City::Initialize() {
+    m_magazines = random(60, 150);
+    m_denisIsHere = false;
 }
 
 void City::OnCreate(SDL_Renderer *renderer)
@@ -711,4 +795,14 @@ void City::Update(double deltaTime)
 void City::Draw(SDL_Renderer *renderer)
 {
     Image::Draw(renderer);
+
+
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    dl->AddText(ImVec2{(double)m_x, (double)m_y}, IM_COL32_BLACK, std::to_string(m_magazines).c_str(), nullptr);
+}
+
+Quest::Quest(const std::string &description)
+    : m_descrition(description)
+{
+
 }

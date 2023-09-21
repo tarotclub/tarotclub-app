@@ -198,16 +198,30 @@ private:
     SDL_Texture *m_texture{nullptr};
 };
 
+
+struct Glyph
+{
+    SDL_Rect rect;
+    SDL_Texture *tex;
+};
+
 class GfxSystem
 {
 public:
     Rect GetWindowSize();
     SDL_Renderer *GetRenderer() { return mRenderer; }
 
+
+    void InitFont(int fontType, const std::string &filename, int font_size);
+    void DrawText(const std::string &text, int x, int y, int r, int g, int b, int fontType);
+
 protected:
     SDL_Window *mWindow = nullptr;
     SDL_Renderer *mRenderer = nullptr;
+
+    std::map<int, std::map<char, Glyph>> m_atlas;
 };
+
 
 
 class Scene
@@ -331,6 +345,8 @@ public:
     void PushBigFont() { ImGui::PushFont(mBigFont); }
     void PopBigFont() { ImGui::PopFont(); }
 
+
+
     void AddScene(std::shared_ptr<Scene> scene, uint32_t id);
     void SwitchSceneTo(uint32_t sceneId, const std::map<std::string, Value> &args = std::map<std::string, Value>());
 
@@ -342,9 +358,19 @@ private:
     const uint32_t mMinimumWidth = 1152;
     const uint32_t mMinimumHeight = 648;
 
+
+    Uint32 totalFrameTicks = 0;
+    Uint32 totalFrames = 0;
+
     Uint64 currentTick = 0;
     Uint64 lastTick = 0;
+
+    std::string fpsStr;
+
+    Uint64 nextFrame;
+    Uint64 nextSecond;
     double deltaTime = 0;
+    unsigned fps = 0;
 
     ImFont* mNormalFont = nullptr;
     ImFont* mBigFont = nullptr;

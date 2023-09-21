@@ -9,11 +9,12 @@
 #include "i-board-event.h"
 #include "DataBase.h"
 
-class IFranceEvent
+class IFranceObject
 {
 public:
-    virtual  ~IFranceEvent() {}
+    virtual  ~IFranceObject() {}
     virtual void SelectCity(int id) = 0;
+    virtual int GetTotalMagazines() const = 0;
 
 };
 
@@ -48,6 +49,7 @@ public:
     }
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
+
 
     virtual void Draw(SDL_Renderer *renderer) override;
 
@@ -86,7 +88,7 @@ class City : public Image
 {
 
 public:
-    City(GfxSystem &s, IFranceEvent &ev, int id);
+    City(GfxSystem &s, IFranceObject &ev, int id);
 
     int GetId() const { return m_id; }
 
@@ -118,6 +120,8 @@ public:
     void SetName(const std::string &name) {
         m_name = name;
     }
+
+    void Initialize();
 
     std::string GetCityName() const  {
         return m_name;
@@ -156,6 +160,15 @@ public:
         rect.y = m_y - rect.h / 2;
     }
 
+    void SetDenisInCity(bool is_here)
+    {
+        m_denisIsHere = is_here;
+    }
+
+    bool IsDenisHere() const {
+        return m_denisIsHere;
+    }
+
     virtual void OnCreate(SDL_Renderer *renderer) override;
 
     virtual void ProcessEvent(const SDL_Event &event) override;
@@ -164,11 +177,14 @@ public:
 
     virtual void Draw(SDL_Renderer *renderer) override;
 
+    int GetMagazines() const { return m_magazines; }
+    void SetMagazines(int m) { m_magazines = m; }
+
     double lon, lat;
 private:
 
     std::shared_ptr<Image> m_selection;
-    IFranceEvent &m_ev;
+    IFranceObject &m_ev;
     int m_id{0};
     int m_x, m_y;
     SDL_Rect m_normalRect;
@@ -176,6 +192,8 @@ private:
     bool m_hovered{false};
     bool m_selected{false};
     std::string m_name;
+
+    bool m_denisIsHere{false};
 
     int m_magazines{100};
 
@@ -194,7 +212,56 @@ private:
 
 };
 
-class StoryModeScene : public Scene, public IFranceEvent
+
+class Quest
+{
+
+public:
+    Quest(const std::string &description);
+    virtual ~Quest() {
+        std::cout << "Delete quest" << std::endl;
+    }
+
+    virtual void CheckObjective() = 0;
+
+    void SetFinished(bool finished) { m_finished = finished; }
+    void SetSuccess(bool success) { m_success = success; }
+
+    int GetDaysLeft() const { return m_daysLeft; }
+    bool GetFinished() const { return m_finished; }
+    bool GetSuccess() const { return m_success; }
+    std::string GetDescription() const { return m_descrition; }
+
+private:
+    std::string m_descrition;
+    bool m_finished{false};
+    bool m_success{false};
+    int m_daysLeft{15};
+};
+
+class MainQuest : public Quest
+{
+
+public:
+
+    MainQuest(IFranceObject &franceEvent, const std::string &description)
+        : Quest(description)
+        , m_franceEvent(franceEvent)
+    {
+
+    }
+
+    virtual void CheckObjective() override {
+
+    }
+
+private:
+    IFranceObject &m_franceEvent;
+};
+
+
+
+class StoryModeScene : public Scene, public IFranceObject
 {
 public:
     StoryModeScene(GfxSystem &system, IBoardEvent &event);
@@ -210,7 +277,8 @@ public:
     virtual void ProcessEvent(const SDL_Event &event) override;
 
     // From IFranceEvent
-    virtual void SelectCity(int id);
+    virtual void SelectCity(int id) override;
+    virtual int GetTotalMagazines() const override;
 
 private:
     IBoardEvent &mEvent;
@@ -237,12 +305,18 @@ private:
     std::shared_ptr<DenisHead> m_head;
     std::shared_ptr<Velo> m_velo;
 
+    int m_currentDay{1};
+
     std::shared_ptr<Image> m_ivan;
 
     std::shared_ptr<Text> m_questsTitle;
     std::shared_ptr<Text> m_infosTitle;
 
     std::string m_currentSelection{"-"};
+    float m_distanceVoyage;
+    float m_tempsVoyage;
+
+    std::vector<std::shared_ptr<Quest>> m_quests;
 
     std::vector<std::shared_ptr<City>> m_cities;
     void GeneratePath();
