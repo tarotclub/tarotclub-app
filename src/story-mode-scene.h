@@ -97,6 +97,8 @@ public:
         }
     }
 
+    double lon, lat;
+
     void MoveTo(int x, int y)
     {
         isRouling = true;
@@ -159,7 +161,11 @@ public:
         m_name = name;
     }
 
-    void Initialize();
+    void Initialize(bool initialized);
+
+    bool Initialized() const {
+        return m_initialized;
+    }
 
     std::string GetCityName() const  {
         return m_name;
@@ -231,6 +237,8 @@ private:
     bool m_selected{false};
     std::string m_name;
 
+    bool m_initialized{false};
+
     bool m_denisIsHere{false};
 
     int m_magazines{100};
@@ -250,6 +258,34 @@ private:
 
 };
 
+class Montargis : public Image
+{
+
+public:
+    Montargis(GfxSystem &s)
+        : Image(s, "assets/story/montargis.png")
+    {
+
+    }
+    double lon, lat;
+private:
+
+};
+
+class Piscine : public Image
+{
+
+public:
+    Piscine(GfxSystem &s)
+        : Image(s, "assets/story/piscine.png")
+    {
+
+    }
+private:
+
+};
+
+
 
 class Quest
 {
@@ -268,10 +304,13 @@ public:
     int GetMinutesLeft() const { return m_minutesLeft; }
     bool GetFinished() const { return m_finished; }
     bool GetSuccess() const { return m_success; }
-    std::string GetDescription() const { return m_descrition; }
+    std::string GetDescription() const { return m_description; }
+
+    void SetMinutes(float min) { m_minutesLeft = min; }
+    void AddMinutes(float min) { m_minutesLeft += min; }
 
 private:
-    std::string m_descrition;
+    std::string m_description;
     bool m_finished{false};
     bool m_success{false};
     float m_minutesLeft{0};
@@ -340,8 +379,11 @@ private:
 
     std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
-    std::shared_ptr<DenisHead> m_head;
-    std::shared_ptr<Velo> m_velo;   
+    std::shared_ptr<DenisHead> m_denis;
+    std::shared_ptr<Velo> m_velo;
+    std::shared_ptr<Montargis> m_montargis;
+
+    std::vector<std::shared_ptr<Piscine>> m_piscines;
 
     int m_currentDay{1};
 
@@ -349,11 +391,13 @@ private:
 
     std::shared_ptr<Text> m_questsTitle;
     std::shared_ptr<Text> m_infosTitle;
+    std::shared_ptr<Text> m_pointsTitle;
 
     std::string m_currentSelection{"-"};
     std::shared_ptr<City> m_citySel;
     float m_distanceVoyage;
     float m_tempsVoyage;
+    int m_points{0};
 
     std::vector<std::shared_ptr<Quest>> m_quests;
 

@@ -414,7 +414,7 @@ void GfxSystem::InitFont(int fontType, const std::string  &filename, int font_si
     {
         Glyph g;
 
-        SDL_Color colorbg = { 0, 0, 0, 0 };
+        SDL_Color colorbg = { 0, 0, 0, 0xFF };
         SDL_Color colorfg = { 255, 255, 255, 0xFF };
         SDL_Surface * surface = TTF_RenderGlyph32_Shaded(font, c, colorfg, colorbg);
 
@@ -466,6 +466,8 @@ void GfxSystem::DrawText(const std::string &text, int x, int y, int r, int g, in
     }
 }
 
+
+ImFont* GfxEngine::mBigFont = nullptr;
 
 bool GfxEngine::Initialize(const std::string &window_title)
 {

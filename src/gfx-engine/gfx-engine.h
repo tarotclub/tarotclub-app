@@ -342,8 +342,8 @@ public:
 
     void Close();
 
-    void PushBigFont() { ImGui::PushFont(mBigFont); }
-    void PopBigFont() { ImGui::PopFont(); }
+    static void PushBigFont() { ImGui::PushFont(mBigFont); }
+    static void PopBigFont() { ImGui::PopFont(); }
 
 
 
@@ -373,7 +373,7 @@ private:
     unsigned fps = 0;
 
     ImFont* mNormalFont = nullptr;
-    ImFont* mBigFont = nullptr;
+    static ImFont* mBigFont;
 
     // Key: id
     std::map<uint32_t, std::shared_ptr<Scene>> mScenes;

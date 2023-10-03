@@ -111,14 +111,18 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     m_map = std::make_shared<FranceMap>(GetSystem());
     mCar = std::make_shared<Car>(GetSystem());
     m_velo = std::make_shared<Velo>(GetSystem());
-    m_head = std::make_shared<DenisHead>(GetSystem());
+    m_denis = std::make_shared<DenisHead>(GetSystem());
+    m_montargis = std::make_shared<Montargis>(GetSystem());
     
     AddEntity(m_map);
-    AddEntity(m_velo);
-    AddEntity(m_head);
 
-    m_head->SetScale(0.15, 0.15);
+    AddEntity(m_montargis);
+    AddEntity(m_velo);
+    AddEntity(m_denis);
+
+    m_denis->SetScale(0.15, 0.15);
     m_velo->SetScale(0.1, 0.1);
+    m_montargis->SetScale(0.2, 0.2);
 
     m_questsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "QUETES");
     m_questsTitle->SetVisible(false);
@@ -128,12 +132,16 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     m_infosTitle->SetVisible(false);
     AddEntity(m_infosTitle);
 
+    m_pointsTitle = std::make_shared<Text>(GetSystem(), "assets/fonts/Bullpen3D.ttf", "POINTS");
+    m_pointsTitle->SetVisible(false);
+    AddEntity(m_pointsTitle);
+
     m_ivan = std::make_shared<Image>(GetSystem(), "assets/story/portrait_ivan.png");
     m_ivan->SetVisible(false);
     AddEntity(m_ivan);
 
     GetSystem().InitFont(0, "assets/fonts/roboto.ttf", 20);
-
+    GetSystem().InitFont(1, "assets/fonts/Bullpen3D.ttf", 20);
 
     // Create cities
     for (int i = 0; i < 10; i++)
@@ -159,7 +167,29 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
 void StoryModeScene::GeneratePath()
 {
     std::vector<std::vector<Value> > results;
-    std::string ret = mDb.Query("SELECT COUNT(*) FROM communes;", results);
+
+
+    // Start point : montargis
+    std::string ret = mDb.Query("SELECT lon, lat FROM communes WHERE nom='Montargis';", results);
+
+    if (results.size() > 0)
+    {
+        if (results[0].size() == 2)
+        {
+            m_denis->lon = results[0][0].GetDouble();
+            m_denis->lat = results[0][1].GetDouble();
+
+            m_montargis->lat = m_denis->lat;
+            m_montargis->lon = m_denis->lon;
+
+            SDL_Point p = GpsToPoint(lon, lat);
+            m_denis->SetPos(p.x, p.y);
+            m_montargis->SetPos(p.x, p.y);
+        }
+    }
+
+    results.clear();
+    ret = mDb.Query("SELECT COUNT(*) FROM communes;", results);
 
     if (results.size() > 0)
     {
@@ -187,13 +217,28 @@ void StoryModeScene::GeneratePath()
                         // La ville doit être située à au moins 100 kms des autres villes
                         bool okay = true;
 
+                        static const double distanceBetweenCities = 200.0;
+
                         for (int i = 0; i < nb_points; i++)
                         {
                             auto c = m_cities.at(i);
-                            double distance = distanceEarth(c->lat, c->lon, lat, lon);
 
-                            std::cout << "Distance: " << distance << std::endl;
-                            if (distance < 200)
+                            if (c->Initialized())
+                            {
+                                double distance = distanceEarth(c->lat, c->lon, lat, lon);
+
+                               // std::cout << "Distance: " << distance << std::endl;
+                                if (distance < distanceBetweenCities)
+                                {
+                                    okay = false;
+                                }
+                            }
+                        }
+
+                        // Also 200 kms from Montargis
+                        {
+                            double distance = distanceEarth(m_montargis->lat, m_montargis->lon, lat, lon);
+                            if (distance < distanceBetweenCities)
                             {
                                 okay = false;
                             }
@@ -209,28 +254,31 @@ void StoryModeScene::GeneratePath()
                             c->lon = lon;
                             c->lat = lat;
 
-                            c->Initialize();
+                            c->Initialize(true);
 
                             nb_points++;
                         }
                         else
                         {
                             tries++;
-                            if (tries > 100)
+                            if (tries > 20)
                             {
+                                tries = 0;
                                 nb_points = 0; // on recommence
+                                for (int i = 0; i < nb_points; i++)
+                                {
+                                    auto c = m_cities.at(i);
+                                    c->Initialize(false);
+                                }
                             }
                         }
                     }
                 }
 
             } while (nb_points < 10);
-
-            // On Place le Denis sur la première ville
-            auto c = m_cities.at(0);
-            c->SetDenisInCity(true);
         }
     }
+
 }
 
 
@@ -308,7 +356,7 @@ void StoryModeScene::OnCreate(SDL_Renderer *renderer)
             city.y = limalongesH;
 
 
-            GeneratePath();
+         //   GeneratePath();
 
 //            city = latLonToOffsets(46.721389, 2.510278, mMap->GetWZoomed(), mMap->GetHZoomed());
             TLogInfo("[STORY] Has results");
@@ -326,6 +374,9 @@ void StoryModeScene::OnActivate(SDL_Renderer *renderer, const std::map<std::stri
 
     GeneratePath();
 
+    m_showPopup = true;
+    m_points = 0;
+
     m_quests.clear();
     m_quests.push_back(std::make_shared<MainQuest>(*this, "Distribuez tous les magazines"));
 }
@@ -338,11 +389,11 @@ void StoryModeScene::Update(double deltaTime)
     {
         if (c->IsDenisHere())
         {
-            m_head->SetPos(c->GetX(), c->GetY());
+            m_denis->SetPos(c->GetX(), c->GetY());
         }
     }
 
-    m_velo->SetPos(m_head->GetX(), m_head->GetY() + 40);
+    m_velo->SetPos(m_denis->GetX(), m_denis->GetY() + 40);
 }
 
 void StoryModeScene::DrawQuestsMenu()
@@ -414,15 +465,13 @@ void StoryModeScene::DrawInfosMenu()
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(width), static_cast<float>(200)),
+        ImVec2(static_cast<float>(width), static_cast<float>(300)),
         ImGuiCond_Always
         );
     // create a window and append into it
     ImGui::Begin("Infos", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
     ImGui::Image((void*) m_infosTitle->GetTexture(), ImVec2(m_infosTitle->GetWidth(), m_infosTitle->GetHeight()));
-
-    ImGui::NewLine();
 
     ImGui::Text("Sélection : %s", m_currentSelection.c_str());
     ImGui::Text("Jour : %d/15", m_currentDay);
@@ -444,17 +493,32 @@ void StoryModeScene::DrawInfosMenu()
 
             if (m_citySel)
             {
-                m_head->MoveTo(m_citySel->GetX(), m_citySel->GetY());
+                m_denis->MoveTo(m_citySel->GetX(), m_citySel->GetY());
             }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Distributer!"))
+        {
+
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Acheter une piscine"))
+        {
+
         }
     }
 
-    /*
-    if (ImGui::Button("Quitter", ImVec2(80, 40)))
-    {
-        SwitchToScene(SCENE_TITLE);
-    }
-    */
+    ImGui::Image((void*) m_pointsTitle->GetTexture(), ImVec2(m_pointsTitle->GetWidth(), m_pointsTitle->GetHeight()));
+
+    ImGui::SameLine();
+
+    GfxEngine::PushBigFont();
+    ImGui::Text("0");
+    GfxEngine::PopBigFont();
+
+
 
     ImGui::End();
 }
@@ -510,7 +574,8 @@ void StoryModeScene::DrawPopupEvent()
         ImGui::Image((void*) m_ivan->GetTexture(), ImVec2(m_ivan->GetWidth(), m_ivan->GetHeight()));
 
         ImGui::Text("Denis, nous avons besoin de toi ! Presstalis est en redressement judiciaire, ils ne distribuent que Valeurs Actuelles.\n"
-                    "Ta mission sera de distribuer CanardPC aux abonnés. Débrouille toi, il faut terminer avant le 15 du mois !");
+                    "Ta mission sera de distribuer CanardPC aux abonnés. Débrouille toi, il faut terminer avant la fin du mois !\n"
+                    "Je te dépose à Montargis, tiens, voici les magazines et un gravel Intersport.");
         ImGui::Separator();
 
         //static int unused_i = 0;
@@ -559,7 +624,7 @@ void StoryModeScene::Draw(SDL_Renderer *renderer)
     DrawToolBar();
     DrawPopupEvent();
 
-
+  //  GetSystem().DrawText("Points", 50, 50, 255, 255, 255, 1);
 
 }
 
@@ -584,13 +649,7 @@ void StoryModeScene::SelectCity(int id)
 
     if (m_citySel)
     {
-        for (auto c : m_cities)
-        {
-            if (c->IsDenisHere())
-            {
-                m_distanceVoyage = distanceEarth(c->lat, c->lon, m_citySel->lat, m_citySel->lon);
-            }
-        }
+        m_distanceVoyage = distanceEarth(m_denis->lat, m_denis->lon, m_citySel->lat, m_citySel->lon);
     }
 }
 
@@ -777,9 +836,10 @@ City::City(GfxSystem &s, IFranceObject &ev, int id)
     AddChildEntity(m_selection);
 }
 
-void City::Initialize() {
+void City::Initialize(bool initialized) {
     m_magazines = random(60, 150);
     m_denisIsHere = false;
+    m_initialized = initialized;
 }
 
 void City::OnCreate(SDL_Renderer *renderer)
@@ -833,7 +893,7 @@ void City::Draw(SDL_Renderer *renderer)
 }
 
 Quest::Quest(const std::string &description)
-    : m_descrition(description)
+    : m_description(description)
 {
 
 }
