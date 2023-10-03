@@ -4,6 +4,7 @@
 #include "scenes.h"
 #include "IconsFontAwesome5.h"
 
+
 #define earthRadiusKm 6371.0
 
 // This function converts decimal degrees to radians
@@ -188,7 +189,7 @@ void StoryModeScene::GeneratePath()
 
                         for (int i = 0; i < nb_points; i++)
                         {
-                            auto c = m_cities.at(nb_points);
+                            auto c = m_cities.at(i);
                             double distance = distanceEarth(c->lat, c->lon, lat, lon);
 
                             std::cout << "Distance: " << distance << std::endl;
@@ -333,7 +334,6 @@ void StoryModeScene::Update(double deltaTime)
 {
     Scene::Update(deltaTime);
   //  mCar->SetPos(200, 200);
-
     for (auto &c : m_cities)
     {
         if (c->IsDenisHere())
@@ -341,7 +341,6 @@ void StoryModeScene::Update(double deltaTime)
             m_head->SetPos(c->GetX(), c->GetY());
         }
     }
-
 
     m_velo->SetPos(m_head->GetX(), m_head->GetY() + 40);
 }
@@ -385,7 +384,7 @@ void StoryModeScene::DrawQuestsMenu()
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%s", c->GetFinished() ? "Terminé" : "En cours");
             ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%d", c->GetDaysLeft());
+            ImGui::Text("%s", MinutesToString(c->GetMinutesLeft()).c_str());
 
         }
         ImGui::EndTable();
@@ -428,13 +427,25 @@ void StoryModeScene::DrawInfosMenu()
     ImGui::Text("Sélection : %s", m_currentSelection.c_str());
     ImGui::Text("Jour : %d/15", m_currentDay);
     ImGui::Text("Distance : %f", m_distanceVoyage);
-    ImGui::Text("Temps de voyage : %d", m_currentDay);
+
+    float duree = m_distanceVoyage / 40.0;
+    duree *= 60.0; // en minutes
+    ImGui::Text("Temps de voyage : %s", MinutesToString(duree).c_str());
 
     if (m_currentSelection != "-")
     {
         if (ImGui::Button("Pédaler ici"))
         {
-            // TODO
+            // On retire Denis de la ville
+            for (auto &c : m_cities)
+            {
+                c->SetDenisInCity(false);
+            }
+
+            if (m_citySel)
+            {
+                m_head->MoveTo(m_citySel->GetX(), m_citySel->GetY());
+            }
         }
     }
 
@@ -559,7 +570,7 @@ void StoryModeScene::ProcessEvent(const SDL_Event &event)
 
 void StoryModeScene::SelectCity(int id)
 {
-    std::shared_ptr<City> citySel;
+
     for (auto c : m_cities)
     {
         c->SetSelected(c->GetId() == id);
@@ -567,22 +578,41 @@ void StoryModeScene::SelectCity(int id)
         if (c->GetId() == id)
         {
             m_currentSelection = c->GetCityName();
-            citySel = c;
+            m_citySel = c;
         }
     }
 
-    if (citySel)
+    if (m_citySel)
     {
         for (auto c : m_cities)
         {
             if (c->IsDenisHere())
             {
-                m_distanceVoyage = distanceEarth(c->lat, c->lon, citySel->lat, citySel->lon);
+                m_distanceVoyage = distanceEarth(c->lat, c->lon, m_citySel->lat, m_citySel->lon);
             }
         }
-
-
     }
+}
+
+std::string StoryModeScene::MinutesToString(float decimalMinutes) const
+{
+    int inputMinutes;
+    double decPart;
+
+    inputMinutes = decimalMinutes;
+    decPart = decimalMinutes-inputMinutes;
+
+    //get number of days
+    int days = inputMinutes / 1440;
+    inputMinutes = inputMinutes % 1440;
+
+    //get number of hours
+    int hours = inputMinutes / 60;
+
+    //get number of minutes
+    int mins = inputMinutes % 60;
+
+    return std::to_string(days) + " j " + std::to_string(hours) + " h " + std::to_string(mins) + " m";
 }
 
 int StoryModeScene::GetTotalMagazines() const
@@ -798,7 +828,8 @@ void City::Draw(SDL_Renderer *renderer)
 
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    dl->AddText(ImVec2{(double)m_x, (double)m_y}, IM_COL32_BLACK, std::to_string(m_magazines).c_str(), nullptr);
+    ImVec2 v{(float)m_x, (float)m_y};
+    dl->AddText(v, IM_COL32_BLACK, std::to_string(m_magazines).c_str(), nullptr);
 }
 
 Quest::Quest(const std::string &description)

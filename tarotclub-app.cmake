@@ -62,6 +62,7 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/DataBase.cpp
     ${TAROT_ROOT}/src/sqlite3.c
     ${TAROT_ROOT}/src/Console.cpp
+    ${TAROT_ROOT}/src/dbtweener.cpp
 
     # ----------------  GFX ENGINE  ----------------
     ${TAROT_ROOT}/src/gfx-engine/stb_image.h

@@ -8,6 +8,7 @@
 #include "gfx-engine.h"
 #include "i-board-event.h"
 #include "DataBase.h"
+#include "dbtweener.h"
 
 class IFranceObject
 {
@@ -71,7 +72,7 @@ private:
     int mHZoomed;
 };
 
-class DenisHead : public Image
+class DenisHead : public Image , public CDBTweener::IListener
 {
 
 public:
@@ -80,7 +81,44 @@ public:
     {
 
     }
+
+    void onTweenFinished(CDBTweener::CTween *pTween) override
+    {
+        isRouling = false;
+    }
+
+    virtual void Update(double deltaTime) override
+    {
+        Image::Update(deltaTime);
+        if (isRouling)
+        {
+            oTweener.step(deltaTime);
+            SetPos(m_x, m_y);
+        }
+    }
+
+    void MoveTo(int x, int y)
+    {
+        isRouling = true;
+        m_x = GetX();
+        m_y = GetY();
+
+       // CTweenListener oListener;
+        CDBTweener::CTween *pTween = new CDBTweener::CTween();
+
+        pTween->setEquation(&CDBTweener::TWEQ_ELASTIC, CDBTweener::TWEA_OUT, 2000.0f);
+        pTween->addValue(&m_x, x);
+        pTween->addValue(&m_y, y);
+
+        oTweener.addTween(pTween);
+        oTweener.addListener(this);
+    }
+
 private:
+    bool isRouling{false};
+    CDBTweener oTweener;
+    float m_x;
+    float m_y;
 
 };
 
@@ -227,7 +265,7 @@ public:
     void SetFinished(bool finished) { m_finished = finished; }
     void SetSuccess(bool success) { m_success = success; }
 
-    int GetDaysLeft() const { return m_daysLeft; }
+    int GetMinutesLeft() const { return m_minutesLeft; }
     bool GetFinished() const { return m_finished; }
     bool GetSuccess() const { return m_success; }
     std::string GetDescription() const { return m_descrition; }
@@ -236,7 +274,7 @@ private:
     std::string m_descrition;
     bool m_finished{false};
     bool m_success{false};
-    int m_daysLeft{15};
+    float m_minutesLeft{0};
 };
 
 class MainQuest : public Quest
@@ -303,7 +341,7 @@ private:
     std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
     std::shared_ptr<DenisHead> m_head;
-    std::shared_ptr<Velo> m_velo;
+    std::shared_ptr<Velo> m_velo;   
 
     int m_currentDay{1};
 
@@ -313,6 +351,7 @@ private:
     std::shared_ptr<Text> m_infosTitle;
 
     std::string m_currentSelection{"-"};
+    std::shared_ptr<City> m_citySel;
     float m_distanceVoyage;
     float m_tempsVoyage;
 
@@ -325,6 +364,7 @@ private:
     void DrawToolBar();
     void DrawInfosMenu();
     void DrawPopupEvent();
+    std::string MinutesToString(float decimalMinutes) const;
 };
 
 #endif // STORYMODESCENE_H

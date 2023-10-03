@@ -587,6 +587,7 @@ bool GfxEngine::Initialize(const std::string &window_title)
     colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
     colors[ImGuiCol_NavHighlight]           = colors[ImGuiCol_HeaderHovered];
     colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
+    colors[ImGuiCol_TableHeaderBg]          = ImVec4(0.278, 0.576, 0.902, 1.00f);  // Bleu foncé
 
     // Setup renderer
     mRenderer =  SDL_CreateRenderer( mWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
