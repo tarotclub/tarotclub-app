@@ -16,6 +16,7 @@ public:
     virtual  ~IFranceObject() {}
     virtual void SelectCity(int id) = 0;
     virtual int GetTotalMagazines() const = 0;
+    virtual void DenisArrivedInCity() = 0;
 
 };
 
@@ -72,57 +73,6 @@ private:
     int mHZoomed;
 };
 
-class DenisHead : public Image , public CDBTweener::IListener
-{
-
-public:
-    DenisHead(GfxSystem &s)
-        : Image(s, "assets/story/denis_lunettes.png")
-    {
-
-    }
-
-    void onTweenFinished(CDBTweener::CTween *pTween) override
-    {
-        isRouling = false;
-    }
-
-    virtual void Update(double deltaTime) override
-    {
-        Image::Update(deltaTime);
-        if (isRouling)
-        {
-            oTweener.step(deltaTime);
-            SetPos(m_x, m_y);
-        }
-    }
-
-    double lon, lat;
-
-    void MoveTo(int x, int y)
-    {
-        isRouling = true;
-        m_x = GetX();
-        m_y = GetY();
-
-       // CTweenListener oListener;
-        CDBTweener::CTween *pTween = new CDBTweener::CTween();
-
-        pTween->setEquation(&CDBTweener::TWEQ_ELASTIC, CDBTweener::TWEA_OUT, 2000.0f);
-        pTween->addValue(&m_x, x);
-        pTween->addValue(&m_y, y);
-
-        oTweener.addTween(pTween);
-        oTweener.addListener(this);
-    }
-
-private:
-    bool isRouling{false};
-    CDBTweener oTweener;
-    float m_x;
-    float m_y;
-
-};
 
 class City : public Image
 {
@@ -245,6 +195,65 @@ private:
 
 };
 
+class Denis : public Image , public CDBTweener::IListener
+{
+
+public:
+    Denis(GfxSystem &s, IFranceObject &franceEvent)
+        : Image(s, "assets/story/denis_lunettes.png")
+        , m_franceEvent(franceEvent)
+    {
+
+    }
+
+    void onTweenFinished(CDBTweener::CTween *pTween) override
+    {
+        isRouling = false;
+        m_franceEvent.DenisArrivedInCity();
+    }
+
+    bool IsRouling() const { return isRouling; }
+
+    virtual void Update(double deltaTime) override
+    {
+        Image::Update(deltaTime);
+        if (isRouling)
+        {
+            oTweener.step(deltaTime);
+            SetPos(m_x, m_y);
+        }
+    }
+
+    double lon, lat;
+    std::shared_ptr<City> m_inCity;
+
+    void MoveTo(int x, int y)
+    {
+        isRouling = true;
+        m_x = GetX();
+        m_y = GetY();
+
+        // CTweenListener oListener;
+        CDBTweener::CTween *pTween = new CDBTweener::CTween();
+
+        pTween->setEquation(&CDBTweener::TWEQ_ELASTIC, CDBTweener::TWEA_OUT, 2000.0f);
+        pTween->addValue(&m_x, x);
+        pTween->addValue(&m_y, y);
+
+        oTweener.addTween(pTween);
+        oTweener.addListener(this);
+    }
+
+private:
+    IFranceObject &m_franceEvent;
+    bool isRouling{false};
+    CDBTweener oTweener;
+    float m_x;
+    float m_y;
+
+};
+
+
 class Velo : public Image
 {
 
@@ -301,13 +310,25 @@ public:
     void SetFinished(bool finished) { m_finished = finished; }
     void SetSuccess(bool success) { m_success = success; }
 
-    int GetMinutesLeft() const { return m_minutesLeft; }
+    float GetMinutesLeft() const { return m_minutesLeft; }
+
     bool GetFinished() const { return m_finished; }
-    bool GetSuccess() const { return m_success; }
+
+    bool GetSuccess() const
+    {
+        return m_success;
+    }
+
     std::string GetDescription() const { return m_description; }
 
     void SetMinutes(float min) { m_minutesLeft = min; }
-    void AddMinutes(float min) { m_minutesLeft += min; }
+    void AddMinutes(float min) {
+        m_minutesLeft += min;
+        if (m_minutesLeft < 0.0)
+        {
+            m_minutesLeft = 0.0;
+        }
+    }
 
 private:
     std::string m_description;
@@ -325,11 +346,19 @@ public:
         : Quest(description)
         , m_franceEvent(franceEvent)
     {
-
+        SetMinutes(17280);
     }
 
     virtual void CheckObjective() override {
-
+        if (GetMinutesLeft() == 0.0)
+        {
+            SetFinished(true);
+            SetSuccess(false);
+        } else if (m_franceEvent.GetTotalMagazines() == 0)
+        {
+            SetFinished(true);
+            SetSuccess(true);
+        }
     }
 
 private:
@@ -356,6 +385,7 @@ public:
     // From IFranceEvent
     virtual void SelectCity(int id) override;
     virtual int GetTotalMagazines() const override;
+    virtual void DenisArrivedInCity() override;
 
 private:
     IBoardEvent &mEvent;
@@ -375,11 +405,15 @@ private:
     double xFactor{1.0};
     double yFactor{1.0};
 
+    float m_endurance{100.0};
+
     bool m_showPopup{true};
+
+    std::string m_popupText;
 
     std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
-    std::shared_ptr<DenisHead> m_denis;
+    std::shared_ptr<Denis> m_denis;
     std::shared_ptr<Velo> m_velo;
     std::shared_ptr<Montargis> m_montargis;
 
@@ -398,6 +432,8 @@ private:
     float m_distanceVoyage;
     float m_tempsVoyage;
     int m_points{0};
+    int m_totalMagazines{0};
+    bool m_lastPopup{false};
 
     std::vector<std::shared_ptr<Quest>> m_quests;
 

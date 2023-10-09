@@ -113,6 +113,9 @@ set(PROJECT_SOURCES
     ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_api.cpp
     ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor.cpp
     ${IMGUI_NODE_EDITOR_DIR}/crude_json.cpp
+
+#    ${TAROT_ROOT}/libs/implot/implot.cpp
+#    ${TAROT_ROOT}/libs/implot/implot_items.cpp
 )
 
 set(TAROT_INCLUDES
@@ -121,6 +124,7 @@ set(TAROT_INCLUDES
     ${TAROT_ROOT}/libs/tarotclub-core
     ${TAROT_ROOT}/libs/tarotclub-core/jsengine
     ${TAROT_ROOT}/libs/tarotclub-core/zip
+    ${TAROT_ROOT}/libs/implot
     ${MBEDTLS_DIR}/include
 #    ${TAROT_ROOT}/libs/asio
     ${TAROT_ROOT}/libs/nanosvg/src

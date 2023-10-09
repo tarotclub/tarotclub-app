@@ -3,7 +3,7 @@
 #include "assets.h"
 #include "scenes.h"
 #include "IconsFontAwesome5.h"
-
+#include "implot.h"
 
 #define earthRadiusKm 6371.0
 
@@ -111,7 +111,7 @@ StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
     m_map = std::make_shared<FranceMap>(GetSystem());
     mCar = std::make_shared<Car>(GetSystem());
     m_velo = std::make_shared<Velo>(GetSystem());
-    m_denis = std::make_shared<DenisHead>(GetSystem());
+    m_denis = std::make_shared<Denis>(GetSystem(), *this);
     m_montargis = std::make_shared<Montargis>(GetSystem());
     
     AddEntity(m_map);
@@ -377,6 +377,10 @@ void StoryModeScene::OnActivate(SDL_Renderer *renderer, const std::map<std::stri
     m_showPopup = true;
     m_points = 0;
 
+    m_popupText = "Denis, nous avons besoin de toi ! Presstalis est en redressement judiciaire, ils ne distribuent que Valeurs Actuelles.\n"
+                  "Ta mission sera de distribuer CanardPC aux abonnés. Débrouille toi, il faut terminer rapidement !\n"
+                  "Je te dépose à Montargis, tiens, voici les magazines et un gravel Intersport.";
+
     m_quests.clear();
     m_quests.push_back(std::make_shared<MainQuest>(*this, "Distribuez tous les magazines"));
 }
@@ -385,15 +389,42 @@ void StoryModeScene::Update(double deltaTime)
 {
     Scene::Update(deltaTime);
   //  mCar->SetPos(200, 200);
+    m_totalMagazines = 0;
     for (auto &c : m_cities)
     {
         if (c->IsDenisHere())
         {
             m_denis->SetPos(c->GetX(), c->GetY());
         }
+
+        m_totalMagazines += c->GetMagazines();
     }
 
     m_velo->SetPos(m_denis->GetX(), m_denis->GetY() + 40);
+
+
+    // Test fin de game, on
+    for (auto &c : m_quests)
+    {
+        c->CheckObjective();
+
+        if (c->GetFinished())
+        {
+            if (c->GetSuccess())
+            {
+                m_popupText = "Bravoooo Denis ! Tiens, une chambre à aire neuve.\nOn recommence le mois prochain ?";
+                m_lastPopup = true;
+                m_showPopup = true;
+            }
+            else
+            {
+                m_popupText = "Mince Denis ! Bon, on retente le mois prochain ok ?\n Prend un vélo Décath pour voir.";
+                m_lastPopup = true;
+                m_showPopup = true;
+            }
+        }
+    }
+
 }
 
 void StoryModeScene::DrawQuestsMenu()
@@ -465,7 +496,7 @@ void StoryModeScene::DrawInfosMenu()
     // here we set the calculated width and also make the height to be
     // be the height of the main window also with some margin
     ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(width), static_cast<float>(300)),
+        ImVec2(static_cast<float>(width), static_cast<float>(350)),
         ImGuiCond_Always
         );
     // create a window and append into it
@@ -474,51 +505,109 @@ void StoryModeScene::DrawInfosMenu()
     ImGui::Image((void*) m_infosTitle->GetTexture(), ImVec2(m_infosTitle->GetWidth(), m_infosTitle->GetHeight()));
 
     ImGui::Text("Sélection : %s", m_currentSelection.c_str());
-    ImGui::Text("Jour : %d/15", m_currentDay);
-    ImGui::Text("Distance : %f", m_distanceVoyage);
+    ImGui::Text("Distance : %f km", m_distanceVoyage);
+    ImGui::Text("Total à distribuer : %d", m_totalMagazines);
 
-    float duree = m_distanceVoyage / 40.0;
+    float duree = m_distanceVoyage / 20.0;
     duree *= 60.0; // en minutes
     ImGui::Text("Temps de voyage : %s", MinutesToString(duree).c_str());
 
     if (m_currentSelection != "-")
     {
-        if (ImGui::Button("Pédaler ici"))
+        if (!m_denis->IsRouling())
         {
-            // On retire Denis de la ville
-            for (auto &c : m_cities)
+            float besoinEnergie = (duree / 60) * 5.0;
+
+            if ((m_endurance > 0.0) && ((m_endurance - besoinEnergie) > 0.0))
             {
-                c->SetDenisInCity(false);
+                if (m_distanceVoyage > 0.0)
+                {
+                    if (ImGui::Button("Pédaler ici"))
+                    {
+                        // On retire Denis de la ville
+                        for (auto &c : m_cities)
+                        {
+                            c->SetDenisInCity(false);
+                        }
+
+                        if (m_citySel)
+                        {
+                            m_denis->MoveTo(m_citySel->GetX(), m_citySel->GetY());
+                            m_denis->m_inCity = m_citySel;
+
+                            m_endurance -= besoinEnergie;
+                            if (m_endurance < 0.0)
+                            {
+                                m_endurance = 0.0;
+                            }
+
+                            // On diminue toutes les quêtes de cette durée
+                            for (auto &c : m_quests)
+                            {
+                                c->AddMinutes(duree * -1);
+                            }
+
+                        }
+                    }
+                    ImGui::SameLine();
+                }
+
+
+            }
+            else
+            {
+                ImGui::Text("Vous êtes trop fatigué pour bouger ou aller ici");
             }
 
-            if (m_citySel)
+            if (ImGui::Button("Dormir 8h"))
             {
-                m_denis->MoveTo(m_citySel->GetX(), m_citySel->GetY());
+                m_endurance +=  8 * 6.0; // 8h * 6% par heure
+                if (m_endurance >= 100.0)
+                {
+                    m_endurance = 100.0;
+                }
+
+                // On diminue toutes les quêtes de cette durée
+                for (auto &c : m_quests)
+                {
+                    c->AddMinutes(8 * 60 * -1);
+                }
             }
-        }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Distributer!"))
-        {
+            if (m_denis->m_inCity && (m_endurance > 0.0))
+            {
+                if (ImGui::Button("Distributer!"))
+                {
+                    int mags = m_denis->m_inCity->GetMagazines();
+                    m_points += 526 * mags;
+                    m_denis->m_inCity->SetMagazines(0);
+                    m_endurance -= mags / 10;
+                }
+            }
 
-        }
+//            ImGui::SameLine();
 
-        ImGui::SameLine();
-        if (ImGui::Button("Acheter une piscine"))
-        {
+//            if (m_endurance > 0.0)
+//            {
+//                if (ImGui::Button("Acheter une piscine"))
+//                {
+
+//                }
+//            }
 
         }
     }
+
+    ImGui::Text("Endurance");
+    ImGui::ProgressBar(m_endurance/100, ImVec2(0.0f, 0.0f));
 
     ImGui::Image((void*) m_pointsTitle->GetTexture(), ImVec2(m_pointsTitle->GetWidth(), m_pointsTitle->GetHeight()));
 
     ImGui::SameLine();
 
     GfxEngine::PushBigFont();
-    ImGui::Text("0");
+    ImGui::Text("%d", m_points);
     GfxEngine::PopBigFont();
-
-
 
     ImGui::End();
 }
@@ -573,39 +662,23 @@ void StoryModeScene::DrawPopupEvent()
     {
         ImGui::Image((void*) m_ivan->GetTexture(), ImVec2(m_ivan->GetWidth(), m_ivan->GetHeight()));
 
-        ImGui::Text("Denis, nous avons besoin de toi ! Presstalis est en redressement judiciaire, ils ne distribuent que Valeurs Actuelles.\n"
-                    "Ta mission sera de distribuer CanardPC aux abonnés. Débrouille toi, il faut terminer avant la fin du mois !\n"
-                    "Je te dépose à Montargis, tiens, voici les magazines et un gravel Intersport.");
+        ImGui::Text("%s", m_popupText.c_str());
         ImGui::Separator();
 
-        //static int unused_i = 0;
-        //ImGui::Combo("Combo", &unused_i, "Delete\0Delete harder\0");
-
-
-        if (ImGui::Button("OK", ImVec2(120, 0))) { m_showPopup = false; ImGui::CloseCurrentPopup(); }
+        if (ImGui::Button("OK", ImVec2(120, 0)))
+        {
+            m_showPopup = false;
+            ImGui::CloseCurrentPopup();
+            if (m_lastPopup)
+            {
+                m_lastPopup = false;
+                SwitchToScene(SCENE_TITLE);
+            }
+        }
         ImGui::SetItemDefaultFocus();
-//        ImGui::SameLine();
-//        if (ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+
         ImGui::EndPopup();
     }
-/*
-
-
-    ImGuiIO& io = ImGui::GetIO();
-    ImVec2 pos(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-                             | ImGuiWindowFlags_NoDecoration
-                             | ImGuiWindowFlags_AlwaysAutoResize
-                             | ImGuiWindowFlags_NoSavedSettings;
-
-
-    if (ImGui::Begin("Popup", nullptr, flags))
-    {
-        ImGui::Text("Coucou");
-        ImGui::End();
-    }
-*/
 }
 
 
@@ -682,6 +755,14 @@ int StoryModeScene::GetTotalMagazines() const
         total += c->GetMagazines();
     }
     return total;
+}
+
+void StoryModeScene::DenisArrivedInCity()
+{
+    m_denis->m_inCity->SetDenisInCity(true);
+    m_denis->lon =  m_denis->m_inCity->lon;
+    m_denis->lat =  m_denis->m_inCity->lat;
+    m_distanceVoyage = 0.0;
 }
 
 SDL_Rect world = {0, 0, 1728, 972};
