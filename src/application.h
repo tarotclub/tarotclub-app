@@ -1,23 +1,18 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include "Log.h"
-#include "BotManager.h"
-#include "Console.h"
-#include "PlayerContext.h"
-#include "Lobby.h"
-#include "Server.h"
-#include "Network.h"
-#include "ClientConfig.h"
-#include "i-application.h"
-#include "websocket-client.h"
-
 #include <list>
 #include <deque>
+#include <string>
 
+
+#include "Log.h"
+#include "i-application.h"
+#include "websocket-client.h"
+#include "i-board-event.h"
 // Gfx
 #include "title-scene.h"
-#include "board-scene.h"
+
 
 #define TAROTCLUB_APP_VERSION   "3.0.0"
 
@@ -66,7 +61,7 @@ private:
     virtual void ClickOnBoard() override;
 
     INetClient &mNet;
-    PlayerContext mCtx;
+
     GameType mGameType = GAME_TYPE_LOCAL;
 
     bool mLogged = false;
@@ -78,9 +73,6 @@ private:
 
     GfxEngine mGfx;
 
-    // ---------------------  WEB SOCKET TUNNEL WITH WEBSITE  ---------------------
-    WebSocketClient mWsClient;
-    std::thread mWsThread;
 
     std::mutex mMutex;
     std::vector<ServerState> mServers;

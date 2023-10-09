@@ -153,7 +153,7 @@ void Image::OnCreate(SDL_Renderer *renderer)
         TLogError("[IMAGE] Can't find file: " + mPath);
     }
 
-    mTexture = LoadImage(renderer, mPath.c_str());
+    mTexture = LoadRasterImage(renderer, mPath.c_str());
 
     if (mTexture == nullptr)
     {
@@ -269,7 +269,7 @@ SDL_Texture *Image::RenderSVG(SDL_Renderer *renderer, const std::string &svgData
 
 
 
-SDL_Texture *Image::LoadImage(SDL_Renderer *renderer, const char* filename)
+SDL_Texture *Image::LoadRasterImage(SDL_Renderer *renderer, const char* filename)
 {
     // Read data
     int32_t width, height, bytesPerPixel;
@@ -440,7 +440,7 @@ void GfxSystem::InitFont(int fontType, const std::string  &filename, int font_si
 }
 
 
-void GfxSystem::DrawText(const std::string &text, int x, int y, int r, int g, int b, int fontType)
+void GfxSystem::DrawTextFromAtlas(const std::string &text, int x, int y, int r, int g, int b, int fontType)
 {
     char c;
     SDL_Rect dest;

@@ -168,7 +168,7 @@ public:
 
     static SDL_Texture *LoadSVG(SDL_Renderer *renderer, const char *filename);
     static SDL_Texture *RenderSVG(SDL_Renderer *renderer, const std::string &svgData);
-    static SDL_Texture *LoadImage(SDL_Renderer *renderer, const char *filename);
+    static SDL_Texture *LoadRasterImage(SDL_Renderer *renderer, const char *filename);
     static SDL_Texture *CreateText(SDL_Renderer *renderer, const char *fontfile, const char *text, int pixelsize);
 
 private:
@@ -213,7 +213,7 @@ public:
 
 
     void InitFont(int fontType, const std::string &filename, int font_size);
-    void DrawText(const std::string &text, int x, int y, int r, int g, int b, int fontType);
+    void DrawTextFromAtlas(const std::string &text, int x, int y, int r, int g, int b, int fontType);
 
 protected:
     SDL_Window *mWindow = nullptr;

@@ -3,12 +3,12 @@
 set(IMGUI_DIR ${TAROT_ROOT}/libs/imgui)
 set(IMGUI_NODE_EDITOR_DIR ${TAROT_ROOT}/libs/imgui-node-editor)
 
-set(MBEDTLS_DIR ${TAROT_ROOT}/libs/tarotclub-core/mbedtls-3.4.1)
+#set(MBEDTLS_DIR ${TAROT_ROOT}/libs/tarotclub-core/mbedtls-3.4.1)
 
 #set(ICL_ROOT ${TAROT_ROOT}/libs/icl)
 #include(${ICL_ROOT}/icl.cmake)
 
-add_subdirectory(${MBEDTLS_DIR} mbdedtls)
+#add_subdirectory(${MBEDTLS_DIR} mbdedtls)
 
 set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/ServerConfig.cpp
@@ -36,7 +36,7 @@ set(TAROT_CORE_SRCS
     ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.h
     ${TAROT_ROOT}/libs/tarotclub-core/websocket-client.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/JsonValue.cpp
-    ${TAROT_ROOT}/libs/tarotclub-core/Value.cpp
+
     ${TAROT_ROOT}/libs/tarotclub-core/JsonReader.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/JsonWriter.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/Util.cpp
@@ -53,15 +53,16 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/i-board-event.h
     ${TAROT_ROOT}/src/application.cpp
     ${TAROT_ROOT}/src/application.h
-    ${TAROT_ROOT}/src/Embedded.cpp
-    ${TAROT_ROOT}/src/Embedded.h
-    ${TAROT_ROOT}/src/http-client.h
-    ${TAROT_ROOT}/src/assets.cpp
-    ${TAROT_ROOT}/src/Base64Util.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/Value.cpp
+#    ${TAROT_ROOT}/src/Embedded.cpp
+#    ${TAROT_ROOT}/src/Embedded.h
+#    ${TAROT_ROOT}/src/http-client.h
+#    ${TAROT_ROOT}/src/assets.cpp
+#    ${TAROT_ROOT}/src/Base64Util.cpp
     ${TAROT_ROOT}/src/Log.cpp
     ${TAROT_ROOT}/src/DataBase.cpp
     ${TAROT_ROOT}/src/sqlite3.c
-    ${TAROT_ROOT}/src/Console.cpp
+#    ${TAROT_ROOT}/src/Console.cpp
     ${TAROT_ROOT}/src/dbtweener.cpp
 
     # ----------------  GFX ENGINE  ----------------
@@ -78,28 +79,28 @@ set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/story-mode-scene.h
 
     # ----------------  AI-EDITOR SCENE  ----------------
-    ${TAROT_ROOT}/src/scenes/ai-editor-scene.cpp
-    ${TAROT_ROOT}/src/scenes/ai-editor-scene.h
-    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.cpp
-    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.h
+#    ${TAROT_ROOT}/src/scenes/ai-editor-scene.cpp
+#    ${TAROT_ROOT}/src/scenes/ai-editor-scene.h
+#    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.cpp
+#    ${TAROT_ROOT}/src/components/ai-editor/ai-editor-view.h
 
     # ----------------  TITLE SCENE  ----------------
     ${TAROT_ROOT}/src/scenes/title-scene.cpp
     ${TAROT_ROOT}/src/scenes/title-scene.h
 
     # ----------------  BOARD SCENE  ----------------
-    ${TAROT_ROOT}/src/scenes/board-scene.cpp
-    ${TAROT_ROOT}/src/scenes/board-scene.h
-    ${TAROT_ROOT}/src/components/hud/board-hud.cpp
-    ${TAROT_ROOT}/src/components/hud/board-hud.h
+#    ${TAROT_ROOT}/src/scenes/board-scene.cpp
+#    ${TAROT_ROOT}/src/scenes/board-scene.h
+#    ${TAROT_ROOT}/src/components/hud/board-hud.cpp
+#    ${TAROT_ROOT}/src/components/hud/board-hud.h
 
     # ----------------  ONLINE BOARD SCENE  ----------------
-    ${TAROT_ROOT}/src/scenes/online-board-scene.cpp
-    ${TAROT_ROOT}/src/scenes/online-board-scene.h
+#    ${TAROT_ROOT}/src/scenes/online-board-scene.cpp
+#    ${TAROT_ROOT}/src/scenes/online-board-scene.h
 
     # ----------------  LOCAL GAME SCENE  ----------------
-    ${TAROT_ROOT}/src/scenes/local-game-scene.h
-    ${TAROT_ROOT}/src/scenes/local-game-scene.cpp
+#    ${TAROT_ROOT}/src/scenes/local-game-scene.h
+#    ${TAROT_ROOT}/src/scenes/local-game-scene.cpp
 
     # ----------------  IMGUI  ----------------
     ${IMGUI_DIR}/imgui.cpp

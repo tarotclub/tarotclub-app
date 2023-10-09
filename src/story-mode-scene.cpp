@@ -1,9 +1,9 @@
 #include "story-mode-scene.h"
-#include "SDL2_gfxPrimitives.h"
+
 #include "assets.h"
 #include "scenes.h"
 #include "IconsFontAwesome5.h"
-#include "implot.h"
+
 
 #define earthRadiusKm 6371.0
 

@@ -4,8 +4,8 @@
 #include "gfx-engine.h"
 #include "i-application.h"
 
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
+//#include <boost/asio.hpp>
+//#include <boost/asio/ssl.hpp>
 #include "http-client.h"
 #include "websocket-client.h"
 #include "ThreadQueue.h"
@@ -13,6 +13,7 @@
 
 #include <JsonValue.h>
 
+#include "SDL2/SDL_mixer.h"
 #include <thread>
 #include <iostream>
 
@@ -43,20 +44,17 @@ private:
 
     std::shared_ptr<Image> mLogo;
 
+    Mix_Music* gMusic = NULL;
+
     Menus mMenu = MENU_MAIN;
 
-    HttpClient mHttpClient;
-    ThreadQueue<HttpClient::Request> mHttpQueue;
-    std::thread mHttpThread;
+//    HttpClient mHttpClient;
+//    ThreadQueue<HttpClient::Request> mHttpQueue;
+//    std::thread mHttpThread;
 
     void DrawInfoMenu();
     void DrawMainMenu();
-    void DrawOnlineMenu();
 
-    void RunHttp();
-    void RunWebSocket();
-    void Login(const std::string &login, const std::string &password);
-    void HandleHttpReply();
 };
 
 

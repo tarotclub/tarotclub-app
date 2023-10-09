@@ -15,9 +15,31 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(TAROT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(OpenGL REQUIRED)
-find_package(SDL2 REQUIRED)
 
-find_package(SDL2_ttf REQUIRED)
+if (WIN32)
+    set(SDL2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-win/include)
+    set(SDL2_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-win/lib)
+
+    set(SDL2_TTF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-ttf-win/include)
+    set(SDL2_TTF_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-ttf-win/lib)
+
+
+    set(SDL2_MIXER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-mixer-win/include)
+    set(SDL2_MIXER_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/sdl2-mixer-win/lib)
+
+    set(BOOST_INCLUDES C:/boost_1_83_0)
+    set(OPENSSL_INCLUDE_DIR C:/openssl-3.1.3/dist/include)
+    set(OPENSSL_LIBRARY C:/openssl-3.1.3/dist/lib64)
+
+    include_directories(${SDL2_INCLUDE_DIR} ${SDL2_INCLUDE_DIR}/SDL2 ${SDL2_MIXER_INCLUDE_DIR} ${SDL2_TTF_INCLUDE_DIR} ${BOOST_INCLUDES} ${OPENSSL_INCLUDE_DIR})
+
+    add_definitions(-DUSE_WINDOWS_OS)
+
+    else()
+        add_definitions(-DUSE_LINUX_OS)
+        find_package(SDL2 REQUIRED)
+        find_package(SDL2_ttf REQUIRED)
+endif()
 
 
 include(${TAROT_ROOT}/tarotclub-app.cmake)
@@ -25,7 +47,7 @@ include(${TAROT_ROOT}/tarotclub-app.cmake)
 #=========================================================================================================================
 # COMPILER OPTIONS
 #=========================================================================================================================
-add_definitions(-DUSE_LINUX_OS)
+
 add_definitions(-D_REENTRANT)
 add_link_options(-static-libgcc -static-libstdc++)
 
@@ -56,11 +78,16 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 #add_compile_options(-fsanitize=undefined,address)
 
-add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${TAROT_CORE_SRCS})
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} )
 
+if (LINUX)
+    target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} SDL2_ttf OpenGL::GL  pthread ssl crypto dl mbedtls)
+    target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
+else()
+    target_link_libraries(${PROJECT_NAME} SDL2 SDL2_ttf SDL2_mixer OpenGL::GL  pthread)
+    target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY} ${SDL2_TTF_LIBRARY})
+endif()
 
-target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} SDL2_ttf OpenGL::GL  pthread ssl crypto dl mbedtls)
-target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_HEADERS} ${TAROT_INCLUDES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:TAROT_DEBUG>")
 
