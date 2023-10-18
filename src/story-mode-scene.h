@@ -6,7 +6,6 @@
 #include <map>
 #include <memory>
 #include "gfx-engine.h"
-#include "i-board-event.h"
 #include "DataBase.h"
 #include "dbtweener.h"
 
@@ -21,24 +20,6 @@ public:
     virtual void DenisArrivedInCity() = 0;
 
 };
-
-class Car : public Entity
-{
-public:
-    Car(GfxSystem &s)
-        : Entity(s)
-    {
-
-    }
-    virtual void OnCreate(SDL_Renderer *renderer) override;
-
-    virtual void Draw(SDL_Renderer *renderer) override;
-
-private:
-    std::string mDeuxCvSVG;
-    SDL_Texture *mTexture = nullptr;
-};
-
 
 class FranceMap : public Image
 {
@@ -372,7 +353,7 @@ private:
 class StoryModeScene : public Scene, public IFranceObject
 {
 public:
-    StoryModeScene(GfxSystem &system, IBoardEvent &event);
+    StoryModeScene(GfxSystem &system);
 
     virtual void OnCreate(SDL_Renderer *renderer) override;
 
@@ -390,8 +371,6 @@ public:
     virtual void DenisArrivedInCity() override;
 
 private:
-    IBoardEvent &mEvent;
-
     DataBase mDb;
 
     double lon, lat;
@@ -411,9 +390,10 @@ private:
 
     bool m_showPopup{true};
 
+    Mix_Music* gMusic = NULL;
+
     std::string m_popupText;
 
-    std::shared_ptr<Car> mCar;
     std::shared_ptr<FranceMap> m_map;
     std::shared_ptr<Denis> m_denis;
     std::shared_ptr<Velo> m_velo;

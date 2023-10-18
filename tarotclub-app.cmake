@@ -39,7 +39,7 @@ set(TAROT_CORE_SRCS
 
     ${TAROT_ROOT}/libs/tarotclub-core/JsonReader.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/JsonWriter.cpp
-    ${TAROT_ROOT}/libs/tarotclub-core/Util.cpp
+
     ${TAROT_ROOT}/libs/tarotclub-core/UniqueId.cpp
     ${TAROT_ROOT}/libs/tarotclub-core/jsengine/duk_module_duktape.c
     ${TAROT_ROOT}/libs/tarotclub-core/jsengine/duktape.c
@@ -49,6 +49,7 @@ set(TAROT_CORE_SRCS
 
 set(PROJECT_SOURCES
     ${TAROT_ROOT}/src/main.cpp
+    ${TAROT_ROOT}/libs/tarotclub-core/Util.cpp
     ${TAROT_ROOT}/src/scenes.h
     ${TAROT_ROOT}/src/i-board-event.h
     ${TAROT_ROOT}/src/application.cpp

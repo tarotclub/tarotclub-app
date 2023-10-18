@@ -84,7 +84,7 @@ if (LINUX)
     target_link_libraries(${PROJECT_NAME} boost_system ${SDL2_LIBS} SDL2_ttf OpenGL::GL  pthread ssl crypto dl mbedtls)
     target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBS_DIR})
 else()
-    target_link_libraries(${PROJECT_NAME} SDL2 SDL2_ttf SDL2_mixer OpenGL::GL  pthread)
+    target_link_libraries(${PROJECT_NAME} mingw32 SDL2main SDL2 SDL2_ttf  SDL2_mixer OpenGL::GL  pthread Ws2_32 IPHLPAPI)
     target_link_directories(${PROJECT_NAME} PUBLIC ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY} ${SDL2_TTF_LIBRARY})
 endif()
 

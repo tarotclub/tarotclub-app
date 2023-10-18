@@ -1,9 +1,8 @@
 #include "story-mode-scene.h"
 
-#include "assets.h"
 #include "scenes.h"
 #include "IconsFontAwesome5.h"
-
+#include "Log.h"
 
 #define earthRadiusKm 6371.0
 
@@ -104,12 +103,10 @@ int random(int low, int high)
 }
 
 
-StoryModeScene::StoryModeScene(GfxSystem &system, IBoardEvent &event)
+StoryModeScene::StoryModeScene(GfxSystem &system)
     : Scene(system)
-    , mEvent(event)
 {
     m_map = std::make_shared<FranceMap>(GetSystem());
-    mCar = std::make_shared<Car>(GetSystem());
     m_velo = std::make_shared<Velo>(GetSystem());
     m_denis = std::make_shared<Denis>(GetSystem(), *this);
     m_montargis = std::make_shared<Montargis>(GetSystem());
@@ -305,6 +302,15 @@ SDL_Point StoryModeScene::GpsToPoint(double lon, double lat)
 void StoryModeScene::OnCreate(SDL_Renderer *renderer)
 {
     Scene::OnCreate(renderer);
+
+
+    gMusic = Mix_LoadMUS( "assets/audio/Casa Bossa Nova.mp3" );
+    if( gMusic == NULL )
+    {
+        printf( "Failed to load beat music! SDL_mixer Error: %s\n", Mix_GetError() );
+
+    }
+
 
     if (mDb.Open("assets/data/communes.db"))
     {
@@ -878,34 +884,6 @@ std::string replaceStringAll(std::string str, const std::string& old, const std:
     return str;
 }
 
-
-void Car::OnCreate(SDL_Renderer *renderer)
-{
-    if (Assets::Get("deuxcv", mDeuxCvSVG))
-    {
-        std::string newCarColor = replaceStringAll(mDeuxCvSVG, "{{COLOR}}", "#a17321");
-
-        mTexture = Image::RenderSVG(renderer, newCarColor.data());
-        int w = 0;
-        int h = 0;
-        // get the width and height of the texture
-        if (SDL_QueryTexture(mTexture, NULL, NULL, &w, &h) == 0)
-        {
-            SetSize(w, h);
-        }
-    }
-    else
-    {
-        TLogError("[STORY] Cannot load image");
-    }
-}
-
-void Car::Draw(SDL_Renderer *renderer)
-{
-    SDL_SetTextureBlendMode(mTexture, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureColorMod(mTexture, 255, 255, 255);
-    SDL_RenderCopyEx(renderer, mTexture, NULL, &GetRect(), GetAngle(), NULL, SDL_FLIP_NONE);
-}
 
 City::City(GfxSystem &s, IFranceObject &ev, int id)
     : Image(s, "assets/story/city.png")

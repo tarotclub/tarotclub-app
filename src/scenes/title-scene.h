@@ -4,15 +4,6 @@
 #include "gfx-engine.h"
 #include "i-application.h"
 
-//#include <boost/asio.hpp>
-//#include <boost/asio/ssl.hpp>
-#include "http-client.h"
-#include "websocket-client.h"
-#include "ThreadQueue.h"
-#include "Network.h"
-
-#include <JsonValue.h>
-
 #include "SDL2/SDL_mixer.h"
 #include <thread>
 #include <iostream>

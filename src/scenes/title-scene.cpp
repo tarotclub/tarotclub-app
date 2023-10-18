@@ -1,10 +1,7 @@
 #include "title-scene.h"
 #include "scenes.h"
-#include "http-client.h"
-#include "JsonValue.h"
-#include "JsonReader.h"
 #include <string>
-#include "Log.h"
+
 
 #include <cstdlib>
 #include <iostream>

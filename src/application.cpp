@@ -1,18 +1,11 @@
 #include "application.h"
-#include "Embedded.h"
 #include "scenes.h"
-#include "System.h"
 #include "story-mode-scene.h"
-#include "ai-editor-scene.h"
-#include "online-board-scene.h"
-#include "local-game-scene.h"
-#include "JsonReader.h"
 
 #include "SDL2/SDL_mixer.h"
 
-Application::Application(INetClient &net)
+Application::Application()
     : Observer(Log::All)
-    , mNet(net)
 {
 
 
@@ -51,8 +44,8 @@ int Application::Loop()
 {
     // Initialize all scenes and stuff
     mGfx.AddScene(std::make_shared<TitleScene>(mGfx, *this, TAROTCLUB_APP_VERSION), SCENE_TITLE);
-    mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx, *this), SCENE_STORY_MODE);
-    mGfx.AddScene(std::make_shared<AiEditorScene>(mGfx, *this), SCENE_AI_EDITOR);
+    mGfx.AddScene(std::make_shared<StoryModeScene>(mGfx), SCENE_STORY_MODE);
+//    mGfx.AddScene(std::make_shared<AiEditorScene>(mGfx, *this), SCENE_AI_EDITOR);
 
     mGfx.SwitchSceneTo(SCENE_TITLE); // First scene
 
@@ -61,7 +54,7 @@ int Application::Loop()
 
     bool loop = true;
 
-    Request req;
+
     GfxEngine::Message msg;
 
     ApplyOptions();
@@ -71,18 +64,6 @@ int Application::Loop()
     // ainsi, on n'a quasiment aucun "lock" trop long
     while (loop)
     {
-        // 1. On récupère et on décode les trames réseau
-        if (mNetRequests.TryPop(req))
-        {
-            // Il est important de décoder dans le même thread que la boucle d'affichage
-            // de cette façon, on n'a pas d'accès concurrentiel à gérer (mutex)
-            HandleRequest(req);
-        }
-        // 3. On récupère les éventuels autres messages en provenance d'autres threads
-        //    et à destination de la scène courante
-        msg.clear();
-        mAsyncMessages.TryPop(msg);
-
         // 4. On traite les entrées (clavier/souris) et on affiche le jeu
         if (mGfx.Process(msg) == SCENE_EXIT)
         {
@@ -95,8 +76,7 @@ int Application::Loop()
 
 void Application::TimeoutEndOfTrickDelay()
 {
-    // Même code que si on clique sur la table de jeu
-    ClickOnBoard();
+
 }
 
 void Application::Stop()
@@ -107,12 +87,6 @@ void Application::Stop()
 bool Application::IsInternetDetected()
 {
     return false;
-}
-
-void Application::SetLogged(const Identity &ident)
-{
-    mLogged = true;
-
 }
 
 std::string Application::GetHost() const
@@ -130,50 +104,10 @@ void Application::ConnectToServer(const std::string &serverId)
 
 }
 
-std::vector<ServerState> Application::GetServers()
-{
-    std::scoped_lock<std::mutex> lock(mMutex);
-    return mServers;
-}
-
-bool Application::Deliver(const Request &req)
-{
-    bool ret = true;
-
-    mNetRequests.Push(req);
-    return ret;
-}
-
-void Application::Disconnected()
-{
-
-}
 
 
-void Application::ChatMessage(const std::string &msg)
-{
 
-}
 
-void Application::ExitGame()
-{
-
-}
-
-void Application::SendMyBid()
-{
-
-}
-
-void Application::SendMyCard(const Card &c)
-{
-
-}
-
-void Application::ConfigChanged()
-{
-
-}
 
 void Application::ApplyOptions()
 {
@@ -181,22 +115,7 @@ void Application::ApplyOptions()
 
 }
 
-void Application::ClickOnBoard()
-{
-
-}
-
-void Application::OnWsData(const std::string &data)
-{
-
-}
-
-// Callback qui provien du décodeur
-// Il ajoute des réponses à envoyer au network si besoin
-void Application::HandleRequest(const Request &req)
-{
 
 
-}
 
 
